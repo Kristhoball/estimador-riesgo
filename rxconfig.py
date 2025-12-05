@@ -3,13 +3,13 @@ import reflex as rx
 config = rx.Config(
     app_name="data_estimador_riesgo",
     
-    # ESTA ES LA CLAVE: Decirle dónde está el backend
-    # Usamos la URL pública de tu espacio en Hugging Face
-    api_url="https://cristobramos4-data-estimador-riesgo.hf.space",
+    # --- CAMBIO CRÍTICO: LA URL DE ZEABUR ---
+    # Esto le dice al frontend que busque el servidor en la nube, no en localhost
+    api_url="https://estimador-riesgo.zeabur.app",
     
-    # CORS (Permisos de seguridad)
+    # CORS: Permite que la nube y tu PC se conecten
     cors_allowed_origins=[
         "http://localhost:3000",
-        "https://cristobramos4-data-estimador-riesgo.hf.space"
+        "https://estimador-riesgo.zeabur.app"
     ],
 )
