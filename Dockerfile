@@ -1,3 +1,4 @@
+# 1. Usamos una imagen base de Python oficial y ligera
 FROM python:3.11-slim
 
 # 2. Configuración de entorno
@@ -32,8 +33,11 @@ RUN rm -f requirements.txt
 RUN reflex init
 RUN reflex export --frontend-only --no-zip
 
-# 9. Configuración de Caddy (Frontend en 8080)
-# Ahora usa 0.0.0.0:8080 directamente en el Caddyfile
+# --- SOLUCIÓN HTTPS/WEBSOCKET ---
+# 9. FORZAR LA URL PÚBLICA EN HTTPS. (¡REEMPLAZA ESTA URL CON LA TUYA DE ZEABUR!)
+ENV REFLEX_API_URL=https://estimador-riesgo.zeabur.app
+
+# 10. Configuración de Caddy (Frontend en 8080)
 RUN echo "0.0.0.0:8080 {\n\
     handle /_event/* {\n\
         reverse_proxy 127.0.0.1:8000\n\
@@ -48,6 +52,5 @@ RUN echo "0.0.0.0:8080 {\n\
     }\n\
 }" > Caddyfile
 
-# 10. Arranque FINAL: QUITAR EL FLAG --host QUE CAUSA ERROR
-# Usamos el comando simple de escucha
+# 11. Arranque FINAL
 CMD ["sh", "-c", "reflex run --env prod --backend-only --backend-port 8000 & caddy run --config Caddyfile --adapter caddyfile"]
