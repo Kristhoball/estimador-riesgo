@@ -5,7 +5,7 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# 3. Instalar Caddy y util-linux (necesario para que reflex compile)
+# 3. Instalar Caddy y util-linux
 RUN apt-get update && apt-get install -y \
     curl unzip util-linux caddy \
     && rm -rf /var/lib/apt/lists/*
@@ -26,15 +26,18 @@ RUN pip install -r requirements.txt
 COPY . .
 
 # 7. CORRECCIÓN CRÍTICA DE PERMISOS
-# Eliminamos cualquier archivo .gitignore bloqueado antes de que reflex init intente crearlo
-RUN rm -f .gitignore 
+# Eliminamos cualquier archivo de configuración bloqueado antes de que reflex init intente crearlos.
+# Esto soluciona los errores de 'requirements.txt' y '.gitignore'.
+RUN rm -f .gitignore
+RUN rm -f requirements.txt
 
 # 8. Inicializar y Exportar el Frontend
 RUN reflex init
 RUN reflex export --frontend-only --no-zip
 
 # 9. Configuración de Caddy (Frontend en 8080)
-# Esto le dice a Caddy que escuche en 8080 (Zeabur/Cloud) y mande peticiones al Python en 8000
+# Esto le dice a Caddy que escuche en 8080 (el puerto público de Zeabur)
+# y mande peticiones del backend al puerto 8000.
 RUN echo "0.0.0.0:8080 {\n\
     handle /_event/* {\n\
         reverse_proxy 127.0.0.1:8000\n\
@@ -50,4 +53,6 @@ RUN echo "0.0.0.0:8080 {\n\
 }" > Caddyfile
 
 # 10. Arranque FINAL: Ejecutar Python en segundo plano y Caddy en primer plano
+# Utilizamos el comando que pusimos en start.sh (si lo tienes), 
+# pero lo insertamos directamente para simplificar.
 CMD ["sh", "-c", "reflex run --env prod --backend-only --backend-port 8000 & caddy run --config Caddyfile --adapter caddyfile --host 0.0.0.0"]
