@@ -4,34 +4,44 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# 2. Instalar Caddy (Servidor Web) y herramientas del sistema (¡AÑADIDO UNZIP!)
+# 2. Instalar herramientas del sistema (Separamos unzip para asegurar que se instale)
+# Al cambiar esta línea, forzamos a Zeabur a reconstruir esta capa
 RUN apt-get update && apt-get install -y \
-    curl unzip debian-keyring debian-archive-keyring apt-transport-https \
-    && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg \
+    curl \
+    unzip \
+    debian-keyring \
+    debian-archive-keyring \
+    apt-transport-https \
+    && rm -rf /var/lib/apt/lists/*
+
+# 3. Instalar Caddy (Servidor Web)
+RUN curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg \
     && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list \
     && apt-get update && apt-get install -y caddy \
     && rm -rf /var/lib/apt/lists/*
 
-# 3. Crear usuario (Seguridad)
+# 4. Crear usuario (Seguridad)
 RUN useradd -m -u 1000 user
 USER user
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH
 WORKDIR $HOME/app
 
-# 4. Instalar Dependencias Python
+# 5. Instalar Dependencias Python
 COPY --chown=user requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# 5. Copiar Código
+# 6. Copiar Código
 COPY --chown=user . .
 
-# 6. Construir Frontend (Reflex Export)
-# Esto crea la carpeta .web/_static
+# 7. Asegurar permisos de ejecución (Vital para Windows/Git)
+RUN chmod +x start.sh
+
+# 8. Construir Frontend (Reflex Export)
 RUN reflex export --frontend-only --no-zip
 
-# 7. Configurar Caddy (Conecta puerto 8080 -> 8000)
+# 9. Configurar Caddy (Conecta puerto 8080 -> 8000)
 RUN echo "{\n\
     auto_https off\n\
 }\n\
@@ -51,5 +61,5 @@ RUN echo "{\n\
     }\n\
 }" > Caddyfile
 
-# 8. Comando de arranque
-CMD ["./start.sh"]
+# 10. Comando de arranque (Usamos bash explícitamente)
+CMD ["bash", "./start.sh"]
