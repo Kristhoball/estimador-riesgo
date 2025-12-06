@@ -12,17 +12,18 @@ from datetime import datetime
 import time 
 
 # Importamos la lógica de cálculo y filtrado
-# Asegúrate de que en codigo.py tengas la función Filtrar_Archivo_En_Disco que te di antes
+# Usamos punto (.) si están en la misma carpeta 'componentes'
+# Si te da error de importación, cambia a '..codigo' y '..codigo2'
 from .codigo import Filtrar_Archivo_En_Disco 
 from .codigo2 import Calcular_Resultados_Finales
 
 # =========================================================================
-# CACHE GLOBAL (Guarda rutas de archivos, no datos en RAM)
+# CACHE GLOBAL
 # =========================================================================
 USUARIOS_CACHE = {} 
 TIEMPO_EXPIRACION_MINUTOS = 30 
 
-# --- CORRECCIÓN: Usar carpeta temporal del SISTEMA (fuera del proyecto) ---
+# Carpeta segura para uploads
 CARPETA_SISTEMA_TEMP = tempfile.gettempdir()
 CARPETA_DATOS = os.path.join(CARPETA_SISTEMA_TEMP, "datos_usuarios_riesgo")
 
@@ -34,44 +35,29 @@ if not os.path.exists(CARPETA_DATOS):
 
 class State(rx.State):
     usuario_cookie: str = rx.Cookie("")
-    # NUEVA VARIABLE DE ESTADO PARA CONTROLAR EL LÍMITE DE SIMULACIÓN
-    max_filas_combinatoria: str = "2000" # Se guarda como string para el input
+
     # --- VARIABLES ---
     archivos_visuales: list[str] = [] 
-    
-    # IMPORTANTE: Guardamos RUTAS (strings), no diccionarios
     df_rutas: list[str] = [] 
-    
     seleccionado: str = ""
     logs: list[str] = ["Sistema listo. Carga: 1.Titulados, 2.Motivación, 3.Preparación."]
     
     es_simulado: str = "No"
+    
+    # Variable para el input de combinatoria (String para el input)
+    max_filas_combinatoria: str = "2000"
+
     procesando: bool = False
     progreso: int = 0 
-
     historial: list[dict] = []
     tipo_simulacion: str = "Muestra estratificada por criterio de Neyman"
-
-    # Vista por defecto
     vista_actual: str = "inicio" 
-
-    # --- NAVEGACIÓN ---
-    def ir_a_inicio(self): self.vista_actual = "inicio"
-    def ir_a_upload(self): self.vista_actual = "upload"
-    def ir_a_resultados(self): self.vista_actual = "resultados"
-    def ir_a_historial(self): self.vista_actual = "historial"
-
-    # Funciones para la barra (compatibilidad)
-    def mostrar_panel(self): self.vista_actual = "inicio"
-    def mostrar_historial(self): self.vista_actual = "historial"
 
     img_carrera: str = ""
     img_estudiantes: str = ""
     procesando_graficos: bool = False
-
     show_login: bool = False
     show_perfil: bool = False 
-    
     correo_input: str = ""
     pass_input: str = ""
     error_login: str = ""
@@ -79,16 +65,45 @@ class State(rx.State):
     esta_logueado: bool = False
     ver_password: bool = False
 
+    # --- CORRECCIÓN: VAR CALCULADA (Soluciona el TypeError) ---
+    @rx.var
+    def info_estimacion_filas(self) -> str:
+        """Calcula el texto de estimación en el backend."""
+        try:
+            val = int(self.max_filas_combinatoria)
+            return f"Simulará un máximo de {val * 6} filas en total (aprox)."
+        except:
+            return "Ingrese un número válido."
+
     # --- SETTERS ---
+    def set_max_filas_combinatoria(self, v):
+        if v == "" or v is None:
+            self.max_filas_combinatoria = ""
+            return
+        # Solo permitimos dígitos
+        if v.isdigit():
+            self.max_filas_combinatoria = v
+
     def set_correo_input(self, v): self.correo_input = v
     def set_pass_input(self, v): self.pass_input = v
     def set_tipo_simulacion(self, v): self.tipo_simulacion = v
-    def set_es_simulado(self, v): self.es_simulado = v
+    
+    def set_es_simulado(self, v): 
+        self.es_simulado = v
+        print(f"DEBUG: Modo simulado cambiado a {self.es_simulado}")
+
     def set_show_login(self, v): self.show_login = v
     def set_show_perfil(self, v): self.show_perfil = v
     def toggle_ver_password(self): self.ver_password = not self.ver_password
 
-    # --- SESIÓN ---
+    # --- NAVEGACIÓN Y SESIÓN ---
+    def ir_a_inicio(self): self.vista_actual = "inicio"
+    def ir_a_upload(self): self.vista_actual = "upload"
+    def ir_a_resultados(self): self.vista_actual = "resultados"
+    def ir_a_historial(self): self.vista_actual = "historial"
+    def mostrar_panel(self): self.vista_actual = "inicio"
+    def mostrar_historial(self): self.vista_actual = "historial"
+
     def check_session(self):
         self.limpiar_cache_inactivos()
         if self.usuario_cookie and self.usuario_cookie in USUARIOS_CACHE:
@@ -98,10 +113,7 @@ class State(rx.State):
             self.pass_input = user_data["pass"]
             self.historial = user_data.get("historial", [])
             self.archivos_visuales = user_data.get("archivos_visuales", [])
-            
-            # Recuperamos las rutas de disco
             self.df_rutas = user_data.get("df_rutas", [])
-            
             self.logs = user_data.get("logs", ["Sistema listo..."])
             self.img_carrera = user_data.get("img_carrera", "")
             self.img_estudiantes = user_data.get("img_estudiantes", "")
@@ -110,15 +122,6 @@ class State(rx.State):
             USUARIOS_CACHE[self.usuario_cookie]["last_active"] = time.time()
         else:
             self.esta_logueado = False
-# NUEVO SETTER
-    def set_max_filas_combinatoria(self, v): 
-        # Aseguramos que sea un número o lo dejamos en 2000
-        try:
-            val = int(v)
-            if val < 1: val = 1
-            self.max_filas_combinatoria = str(val)
-        except ValueError:
-            self.max_filas_combinatoria = "2000"
 
     def guardar_estado_usuario(self):
         if self.esta_logueado and self.usuario_actual:
@@ -139,7 +142,6 @@ class State(rx.State):
         limite = TIEMPO_EXPIRACION_MINUTOS * 60
         borrar = [k for k, v in USUARIOS_CACHE.items() if (ahora - v["last_active"]) > limite]
         for k in borrar:
-            # Intentar borrar archivos físicos del usuario para ahorrar disco
             if "df_rutas" in USUARIOS_CACHE[k]:
                 for ruta in USUARIOS_CACHE[k]["df_rutas"]:
                     try: os.remove(ruta)
@@ -150,13 +152,11 @@ class State(rx.State):
         if not self.correo_input or not self.pass_input:
             self.error_login = "Error: Faltan datos."
             return
-        
         email = self.correo_input.strip()
         if email in USUARIOS_CACHE:
             if USUARIOS_CACHE[email]["pass"] != self.pass_input:
                 self.error_login = "Contraseña incorrecta."
                 return
-            # Cargar datos existentes
             datos = USUARIOS_CACHE[email]
             self.historial = datos.get("historial", [])
             self.archivos_visuales = datos.get("archivos_visuales", [])
@@ -166,7 +166,6 @@ class State(rx.State):
             self.img_estudiantes = datos.get("img_estudiantes", "")
             self.seleccionado = datos.get("seleccionado", "")
         else:
-            # Usuario Nuevo
             USUARIOS_CACHE[email] = {"pass": self.pass_input, "last_active": time.time()}
             self.historial = []
             self.archivos_visuales = []
@@ -176,45 +175,27 @@ class State(rx.State):
             self.img_estudiantes = ""
             self.seleccionado = ""
             
-        self.usuario_actual = email
-        self.usuario_cookie = email
-        self.esta_logueado = True
-        self.show_login = False
-        self.error_login = ""
+        self.usuario_actual = email; self.usuario_cookie = email
+        self.esta_logueado = True; self.show_login = False; self.error_login = ""
         return rx.toast.success(f"Bienvenido, {email}")
 
     def cerrar_sesion(self):
         self.guardar_estado_usuario()
-        self.usuario_cookie = ""      
-        self.usuario_actual = ""
-        self.esta_logueado = False
-        self.vista_actual = "inicio" # Volver al inicio
-        
-        # Limpieza local
-        self.historial = []
-        self.archivos_visuales = []
-        self.df_rutas = []
-        self.logs = []
-        self.img_carrera = ""
-        self.img_estudiantes = ""
-        self.seleccionado = ""
-        self.correo_input = ""
-        self.pass_input = ""
-        self.show_perfil = False 
+        self.usuario_cookie = ""; self.usuario_actual = ""; self.esta_logueado = False; self.vista_actual = "inicio"
+        self.historial, self.archivos_visuales, self.df_rutas, self.logs = [], [], [], []
+        self.img_carrera, self.img_estudiantes, self.seleccionado = "", "", ""
 
     def eliminar_cuenta(self):
         if self.usuario_actual in USUARIOS_CACHE:
-            # Borrar archivos físicos
             rutas = USUARIOS_CACHE[self.usuario_actual].get("df_rutas", [])
             for r in rutas:
                 try: os.remove(r)
                 except: pass
             del USUARIOS_CACHE[self.usuario_actual]
-            
         self.cerrar_sesion()
         return rx.toast.success("Cuenta eliminada.")
 
-    # --- ARCHIVOS ---
+    # --- GESTIÓN ARCHIVOS ---
     @rx.var
     def solo_archivo_titulados(self) -> list[str]:
         if len(self.archivos_visuales) > 0: return [self.archivos_visuales[0]]
@@ -226,13 +207,10 @@ class State(rx.State):
         if nombre in self.archivos_visuales:
             idx = self.archivos_visuales.index(nombre)
             self.archivos_visuales.pop(idx)
-            
-            # Borramos el archivo físico si existe y actualizamos la lista de rutas
             if idx < len(self.df_rutas):
                 try: os.remove(self.df_rutas[idx])
                 except: pass
                 self.df_rutas.pop(idx)
-                
             self.logs.append(f"Eliminado: {nombre}")
             self.guardar_estado_usuario()
 
@@ -244,19 +222,13 @@ class State(rx.State):
     def descargar_simulacion(self, index: int):
         if 0 <= index < len(self.historial):
             registro = self.historial[index]
-            b64_carrera = registro.get("img_carrera_b64", "")
-            b64_estudiantes = registro.get("img_estudiantes_b64", "")
-            nombre_archivo = registro.get("archivo_origen", "desconocido")
-            
             mem_zip = io.BytesIO()
             with zipfile.ZipFile(mem_zip, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
-                if b64_carrera:
-                    if "," in b64_carrera: b64_carrera = b64_carrera.split(",")[1]
-                    try: zf.writestr(f"grafica_carrera_{nombre_archivo}.png", base64.b64decode(b64_carrera))
+                if registro.get("img_carrera_b64"):
+                    try: zf.writestr(f"grafica_carrera.png", base64.b64decode(registro["img_carrera_b64"].split(",")[1]))
                     except: pass
-                if b64_estudiantes:
-                    if "," in b64_estudiantes: b64_estudiantes = b64_estudiantes.split(",")[1]
-                    try: zf.writestr(f"grafica_estudiantes_{nombre_archivo}.png", base64.b64decode(b64_estudiantes))
+                if registro.get("img_estudiantes_b64"):
+                    try: zf.writestr(f"grafica_estudiantes.png", base64.b64decode(registro["img_estudiantes_b64"].split(",")[1]))
                     except: pass
             mem_zip.seek(0)
             return rx.download(data=mem_zip.read(), filename=f"simulacion_{registro['hora'].replace(':','')}.zip")
@@ -281,23 +253,16 @@ class State(rx.State):
             self.logs.append(f"Orden: {nombre} bajó.")
             self.guardar_estado_usuario()
 
-    # --- UPLOAD CORREGIDO QUE USA LA VARIABLE 'Simulado' ---
+    # --- UPLOAD ---
     async def handle_upload(self, files: list[rx.UploadFile]):
         self.procesando = True
         self.progreso = 5
-        
-        # DEBUG: Confirmar qué valor tiene la variable al momento de subir
-        msg_inicio = f"--- Iniciando carga (Simulado: {self.es_simulado}) ---"
-        print(f"DEBUG: {msg_inicio}")
-        self.logs.append(msg_inicio)
+        self.logs.append(f"--- Iniciando carga (Simulado: {self.es_simulado}) ---")
         yield 
 
-        # --- INICIALIZACIÓN DE VARIABLES DE PROGRESO ---
         num_files = len(files)
-        # Distribuimos 90 puntos de progreso entre los archivos para que el último paso sea 100
-        progress_increment = 90 // max(1, num_files) 
-        current_progress = 5 
-        # -----------------------------------------------
+        inc = 90 // max(1, num_files)
+        curr = 5
 
         for i, file in enumerate(files):
             nombre = file.filename
@@ -310,36 +275,17 @@ class State(rx.State):
                 self.logs.append(f"Recibiendo: {nombre}...")
                 yield
 
-                # Guardar
                 with open(tmp_in, "wb") as buffer:
                     while True:
-                        chunk = await file.read(1024*1024) 
+                        chunk = await file.read(1024*1024)
                         if not chunk: break
                         buffer.write(chunk)
                 gc.collect()
 
-                self.logs.append(f"Validando: {nombre}...")
+                self.logs.append(f"Filtrando: {nombre}...")
                 yield
                 
-                # --- PRE-VALIDACIÓN (Para fallar rápido si no hay ID) ---
-                try:
-                    df_header = pd.read_csv(tmp_in, nrows=0, sep=None, engine='python')
-                    cols_norm = [c.strip().lower() for c in df_header.columns]
-                    
-                    if self.es_simulado == "No":
-                        tiene_id = "id_estudiante" in cols_norm or "id_est" in cols_norm or "id_estudiante" in df_header.columns
-                        
-                        if not tiene_id:
-                            raise ValueError(f"ERROR: Seleccionaste 'No Simulado', pero el archivo '{nombre}' no tiene columna 'id_estudiante'.")
-                
-                except pd.errors.EmptyDataError:
-                    raise Exception(f"El archivo '{nombre}' está vacío.")
-                except ValueError as ve:
-                    raise ve 
-                except Exception as e:
-                    print(f"Advertencia validando headers: {e}")
-
-                # 2. Filtrar y Validar (Llamada al código externo)
+                # Pasamos el flag 'es_simulado' correctamente
                 filas = Filtrar_Archivo_En_Disco(tmp_in, tmp_out, es_simulado=self.es_simulado)
                 
                 if filas > 0:
@@ -351,21 +297,14 @@ class State(rx.State):
                     else:
                         idx = self.archivos_visuales.index(nombre)
                         self.df_rutas[idx] = final_path
-                    self.logs.append(f"-> OK ({filas} filas válidas).")
+                    self.logs.append(f"-> OK ({filas} filas).")
                 else:
-                    self.logs.append(f"Advertencia: '{nombre}' vacío o sin carreras de interés.")
+                    self.logs.append(f"Advertencia: '{nombre}' vacío o sin carreras válidas.")
                     
-            except ValueError as ve:
-                msg = str(ve)
-                self.logs.append(f"RECHAZADO: {msg}")
-                if nombre in self.archivos_visuales: self.eliminar_archivo(nombre)
-                yield rx.window_alert(msg)
-            
             except Exception as e:
-                print(f"Error grave: {e}")
-                self.logs.append(f"Error técnico: {str(e)[:50]}")
+                self.logs.append(f"Error: {str(e)}")
                 if nombre in self.archivos_visuales: self.eliminar_archivo(nombre)
-                yield rx.toast.error("Error al procesar archivo.", duration=3000)
+                yield rx.toast.error(f"Error: {str(e)}", duration=5000)
             
             finally:
                 if os.path.exists(tmp_in): 
@@ -376,18 +315,17 @@ class State(rx.State):
                      except: pass
                 gc.collect()
 
-            # --- CORRECCIÓN DE PROGRESO: Aseguramos que no pase de 99 ---
-            current_progress += progress_increment
-            self.progreso = min(current_progress, 99) 
+            curr += inc
+            self.progreso = min(curr, 99)
             yield 
 
         self.guardar_estado_usuario()
-        self.progreso = 100 
+        self.progreso = 100
         self.procesando = False
         self.logs.append("--- Carga finalizada ---")
-        yield rx.toast.success("Proceso completado.")
+        yield rx.toast.success("Carga lista.")
 
-    # --- GRAFICAR LEYENDO DESDE DISCO ---
+    # --- GRAFICAR ---
     async def generar_graficos(self):
         if len(self.df_rutas) < 3:
             yield rx.window_alert(f"Faltan archivos (tienes {len(self.df_rutas)} de 3).")
@@ -399,27 +337,27 @@ class State(rx.State):
         await asyncio.sleep(0.1)
         
         try:
-            # Leer archivos pequeños ya filtrados
             df_tit = pd.read_csv(self.df_rutas[0])
             df_mot = pd.read_csv(self.df_rutas[1])
             df_prep = pd.read_csv(self.df_rutas[2])
             
-            # Normalizar columnas (por si acaso codigo.py dejó nombres antiguos)
             if 'Carrera que estudias actualmente' in df_mot.columns:
                 df_mot.rename(columns={'Carrera que estudias actualmente': 'nomb_carrera'}, inplace=True)
             if 'Código Carrera Nacional' in df_prep.columns:
                 df_prep.rename(columns={'Código Carrera Nacional': 'nomb_carrera'}, inplace=True)
 
-            # Calcular
-            fig1, fig2 = Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion=self.tipo_simulacion, max_filas_simuladas=self.max_filas_combinatoria)
+            # Usamos el parámetro correcto
+            fig1, fig2 = Calcular_Resultados_Finales(
+                df_tit, df_mot, df_prep, 
+                tipo_simulacion=self.tipo_simulacion,
+                max_filas_simuladas=self.max_filas_combinatoria
+            )
             
-            # Guardar Imágenes
             buf = io.BytesIO(); fig1.savefig(buf, format='png', bbox_inches='tight'); buf.seek(0)
             b64_carrera_raw = base64.b64encode(buf.read()).decode('utf-8')
             self.img_carrera = f"data:image/png;base64,{b64_carrera_raw}"
             plt.close(fig1)
 
-            b64_estudiantes_raw = ""
             if fig2:
                 buf = io.BytesIO(); fig2.savefig(buf, format='png', bbox_inches='tight'); buf.seek(0)
                 b64_estudiantes_raw = base64.b64encode(buf.read()).decode('utf-8')
@@ -445,7 +383,7 @@ class State(rx.State):
         self.procesando_graficos = False
 
 # ==========================================
-# INTERFAZ VISUAL (COMPONENTES DEFINIDOS)
+# INTERFAZ VISUAL
 # ==========================================
 style_border_box = {"border": "1px solid black", "padding": "1.5em", "border_radius": "md", "bg": "white", "width": "100%"}
 
@@ -550,7 +488,7 @@ def content_upload():
                     rx.text("Simulado:", font_weight="bold", font_size="0.9em"),
                     rx.radio_group(["Si", "No"], direction="row", on_change=State.set_es_simulado, value=State.es_simulado),
                     rx.text(f"(Seleccionado: {State.es_simulado})", font_size="0.8em", color="blue"),
-                    margin_bottom="1em", align_items="center"
+                    margin_bottom="1em", align_items="center", spacing="3"
                 ),
                 rx.upload(
                     rx.vstack(rx.button("Seleccionar archivos", variant="outline", size="2"), rx.text("Arrastre aquí .csv", font_size="0.8em", color="gray"), align_items="center"),
@@ -570,7 +508,6 @@ def content_upload():
                 ),
                 style=style_border_box, height="600px"
             ),
-            # CAJA DERECHA CON LISTA COLOREADA
             rx.box(
                 rx.heading("Orden Requerido:", size="4"),
                 rx.text("Cargue los archivos respetando este orden:", font_size="0.9em", margin_bottom="1em", color="gray"),
@@ -597,13 +534,10 @@ def content_resultados():
             rx.hstack(
                 rx.vstack(rx.text("Generar resultados con:", font_weight="bold"), rx.scroll_area(rx.radio_group(items=State.solo_archivo_titulados, direction="column", on_change=State.seleccionar_archivo, value=State.seleccionado), height="60px"), width="50%"),
                 rx.divider(orientation="vertical", height="60px", border_color="black"),
-                
-                # BLOQUE DE TIPO DE SIMULACIÓN
                 rx.vstack(
                     rx.text("Tipo de simulación:", font_weight="bold"), 
                     rx.radio_group(["Muestra estratificada por criterio de Neyman", "Combinatoria", "Eliminación"], direction="column", on_change=State.set_tipo_simulacion, value=State.tipo_simulacion), 
                     
-                    # NUEVO CAMPO DE ENTRADA CONDICIONAL
                     rx.cond(
                         State.tipo_simulacion == "Combinatoria",
                         rx.vstack(
@@ -615,8 +549,9 @@ def content_resultados():
                                 placeholder="Ej: 2000",
                                 max_length=5,
                             ),
+                            # VAR CALCULADA
                             rx.text(
-                                f"Simulará un máximo de {int(State.max_filas_combinatoria) * 6} filas en total (aprox).",
+                                State.info_estimacion_filas,
                                 font_size="0.7em",
                                 color="gray"
                             ),
@@ -629,7 +564,7 @@ def content_resultados():
                     align_items="start"
                 ),
                 width="100%", spacing="4"
-            ),    
+            ),
             rx.center(
                 rx.vstack(
                     rx.button("Click para generar alerta", on_click=State.generar_graficos, loading=State.procesando_graficos, variant="outline", color_scheme="gray", width="90%", height="3em", border="1px solid black"),
@@ -674,7 +609,6 @@ def content_historial():
         height="100%", overflow_y="auto", padding_right="5px" 
     )
 
-# --- ENSAMBLAJE DE VISTAS (SIN SCROLL) ---
 def contenido() -> rx.Component:
     
     # 1. PIEZAS
