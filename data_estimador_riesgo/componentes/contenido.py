@@ -34,7 +34,8 @@ if not os.path.exists(CARPETA_DATOS):
 
 class State(rx.State):
     usuario_cookie: str = rx.Cookie("")
-
+    # NUEVA VARIABLE DE ESTADO PARA CONTROLAR EL LÍMITE DE SIMULACIÓN
+    max_filas_combinatoria: str = "2000" # Se guarda como string para el input
     # --- VARIABLES ---
     archivos_visuales: list[str] = [] 
     
@@ -109,6 +110,15 @@ class State(rx.State):
             USUARIOS_CACHE[self.usuario_cookie]["last_active"] = time.time()
         else:
             self.esta_logueado = False
+# NUEVO SETTER
+    def set_max_filas_combinatoria(self, v): 
+        # Aseguramos que sea un número o lo dejamos en 2000
+        try:
+            val = int(v)
+            if val < 1: val = 1
+            self.max_filas_combinatoria = str(val)
+        except ValueError:
+            self.max_filas_combinatoria = "2000"
 
     def guardar_estado_usuario(self):
         if self.esta_logueado and self.usuario_actual:
@@ -587,9 +597,38 @@ def content_resultados():
             rx.hstack(
                 rx.vstack(rx.text("Generar resultados con:", font_weight="bold"), rx.scroll_area(rx.radio_group(items=State.solo_archivo_titulados, direction="column", on_change=State.seleccionar_archivo, value=State.seleccionado), height="60px"), width="50%"),
                 rx.divider(orientation="vertical", height="60px", border_color="black"),
-                rx.vstack(rx.text("Tipo de simulación:", font_weight="bold"), rx.radio_group(["Muestra estratificada por criterio de Neyman", "Combinatoria", "Eliminación"], direction="column", on_change=State.set_tipo_simulacion, value=State.tipo_simulacion), width="40%"),
+                
+                # BLOQUE DE TIPO DE SIMULACIÓN
+                rx.vstack(
+                    rx.text("Tipo de simulación:", font_weight="bold"), 
+                    rx.radio_group(["Muestra estratificada por criterio de Neyman", "Combinatoria", "Eliminación"], direction="column", on_change=State.set_tipo_simulacion, value=State.tipo_simulacion), 
+                    
+                    # NUEVO CAMPO DE ENTRADA CONDICIONAL
+                    rx.cond(
+                        State.tipo_simulacion == "Combinatoria",
+                        rx.vstack(
+                            rx.text("Máximo de Filas a Simular (por carrera):", font_size="0.8em", margin_top="0.8em"),
+                            rx.input(
+                                value=State.max_filas_combinatoria,
+                                on_change=State.set_max_filas_combinatoria,
+                                type="number",
+                                placeholder="Ej: 2000",
+                                max_length=5,
+                            ),
+                            rx.text(
+                                f"Simulará un máximo de {int(State.max_filas_combinatoria) * 6} filas en total (aprox).",
+                                font_size="0.7em",
+                                color="gray"
+                            ),
+                            align_items="start",
+                            width="100%"
+                        )
+                    ),
+                    
+                    width="40%",
+                    align_items="start"
+                ),
                 width="100%", spacing="4"
-            ),
             rx.center(
                 rx.vstack(
                     rx.button("Click para generar alerta", on_click=State.generar_graficos, loading=State.procesando_graficos, variant="outline", color_scheme="gray", width="90%", height="3em", border="1px solid black"),
