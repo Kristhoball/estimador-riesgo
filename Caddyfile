@@ -1,5 +1,5 @@
 {admin offauto_https off}
-:8080 {logroute {
+:8080 {log route {
     reverse_proxy /_event/* localhost:8000
     reverse_proxy /_upload/* localhost:8000
     reverse_proxy /ping localhost:8000
