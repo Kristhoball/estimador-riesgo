@@ -26,7 +26,6 @@ MAPA_NOMBRES = {
 }
 
 def detectar_formato_seguro(ruta_archivo):
-    """Lee solo las primeras líneas para detectar separador y header sin cargar todo."""
     sep = ','
     header_idx = 0
     try:
@@ -44,10 +43,6 @@ def detectar_formato_seguro(ruta_archivo):
     return 0, ','
 
 def Filtrar_Archivo_En_Disco(ruta_entrada, ruta_salida):
-    """
-    Lee el archivo gigante línea por línea y escribe uno nuevo pequeño solo con lo útil.
-    CERO consumo de RAM extra.
-    """
     idx, sep = detectar_formato_seguro(ruta_entrada)
     
     filas_guardadas = 0
