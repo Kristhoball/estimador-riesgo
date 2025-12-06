@@ -10,7 +10,6 @@ import gc
 import shutil
 from datetime import datetime
 import time 
-
 # Importamos la lógica de cálculo y filtrado
 # Asegúrate de que en codigo.py tengas la función Filtrar_Archivo_En_Disco que te di antes
 from .codigo import Filtrar_Archivo_En_Disco 
