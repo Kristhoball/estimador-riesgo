@@ -425,30 +425,20 @@ def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestr
 
 # Dentro de la función Calcular_Resultados_Finales:
 
+# Dentro de la función Calcular_Resultados_Finales:
+
     elif tipo_simulacion == "Combinatoria":
-        import sys  # Necesario para la barra de carga
-
-        # --- FUNCIÓN VISUAL DE BARRA DE CARGA ---
-        def imprimir_barra_carga(iteracion, total, prefijo='', longitud=40):
-            if total == 0:  # Evitar división por cero
-                sys.stdout.write(f'\r{prefijo} |{"-"*longitud}| 0% Completado')
-                sys.stdout.flush()
-                return
-            porcentaje = f"{100 * (iteracion / float(total)):.1f}"
-            llenos = int(longitud * iteracion // total)
-            barra = '█' * llenos + '-' * (longitud - llenos)
-            sys.stdout.write(f'\r{prefijo} |{barra}| {porcentaje}% Completado')
-            sys.stdout.flush()
-
-        # --- 1. PREPARACIÓN DE DATOS ---
+        # ===========================================================
+        # COMBINATORIA LIGERA PARA WEB: Procesamiento por carrera
+        # ===========================================================
         carrera_pesada = 'INGENIERIA COMERCIAL'
         carreras = df_Motivacion_est['nomb_carrera'].unique()
 
-        # Separamos los DataFrames para el muestreo
+        # Quitamos id_estudiante para no confundir con simulados
         df_mot_est_combinatoria = df_Motivacion_est.drop(columns=['id_estudiante'], errors='ignore')
         df_prep_est_combinatoria = df_Preparacion_est.drop(columns=['id_estudiante'], errors='ignore')
 
-        # Filtrar carreras livianas
+        # Filtrar carreras “livianas”
         df_mot_light = df_mot_est_combinatoria[df_mot_est_combinatoria['nomb_carrera'] != carrera_pesada]
         df_prep_light = df_prep_est_combinatoria[df_prep_est_combinatoria['nomb_carrera'] != carrera_pesada]
         df_tit_light = df_Titulados[df_Titulados['nomb_carrera'] != carrera_pesada].copy()
@@ -457,53 +447,15 @@ def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestr
         df_tit_light['duracion_formal'] = df_tit_light['dur_total_carr']
         df_tit_light = df_tit_light[['nomb_carrera', 'duracion_real', 'duracion_formal']]
 
-        # --- 2. COMBINATORIA OPTIMIZADA (Muestreo Paralelo) ---
-        print("Fase 1: Realizando Muestreo Paralelo y Combinación por carrera...")
-        resultados = [] 
-        
-        carreras_light = df_tit_light['nomb_carrera'].unique()
-        
-        # Límite seguro de filas generadas (para asegurar que el resultado final sea manejable)
-        MAX_FINAL_ROWS = 5000 
-
-        for carr in carreras_light:
-            tit_sub = df_tit_light[df_tit_light['nomb_carrera'] == carr].copy()
-            mot_sub = df_mot_light[df_mot_light['nomb_carrera'] == carr].copy()
-            prep_sub = df_prep_light[df_prep_light['nomb_carrera'] == carr].copy()
-
-            if not tit_sub.empty and not mot_sub.empty and not prep_sub.empty:
-                
-                # OPTIMIZACIÓN: El número de filas a simular es el mínimo de las entradas
-                sample_n = min(len(tit_sub), len(mot_sub), len(prep_sub), MAX_FINAL_ROWS)
-                
-                if sample_n > 0:
-                    # Muestreo simple (sin cross-merge)
-                    tit_sample = tit_sub.sample(n=sample_n, replace=False, random_state=RANDOM_STATE).reset_index(drop=True)
-                    mot_sample = mot_sub.sample(n=sample_n, replace=False, random_state=RANDOM_STATE).reset_index(drop=True)
-                    prep_sample = prep_sub.sample(n=sample_n, replace=False, random_state=RANDOM_STATE).reset_index(drop=True)
-                    
-                    # Unión Paralela (por índice)
-                    simulacion = pd.concat([tit_sample, mot_sample.drop(columns=['nomb_carrera']), prep_sample.drop(columns=['nomb_carrera'])], axis=1)
-                    
-                    simulacion['nomb_carrera'] = carr 
-                    simulacion['fuente'] = 'combinatoria'
-                    simulacion['id_estudiante'] = range(len(simulacion)) # ID temporal
-                    resultados.append(simulacion)
-                
-            del tit_sub, mot_sub, prep_sub
-            gc.collect() 
-
-        # Concatenamos la lista final
-        df_comb_light = pd.concat(resultados, ignore_index=True) if resultados else pd.DataFrame()
-        print(f"Combinatoria Muestreada (Paralela) completada. Filas generadas: {len(df_comb_light)}")
-        
-        del resultados
-        gc.collect() 
-
-        # --- 3. PREPARAR FIGURA y BUCLE DE ALERTAS ---
-        lista_carreras_graficar = df_comb_light['nomb_carrera'].unique().tolist()
+        # Lista de carreras a graficar
+        lista_carreras_graficar = list(df_tit_light['nomb_carrera'].unique())
         if carrera_pesada in carreras:
             lista_carreras_graficar.append(carrera_pesada)
+
+        if not lista_carreras_graficar:
+            fig_estudiantes = plt.figure()
+            plt.text(0.5, 0.5, "Sin datos para Combinatoria", ha='center')
+            return fig_carrera, fig_estudiantes
 
         filas = max(1, math.ceil(len(lista_carreras_graficar) / 2))
         fig_estudiantes, axes = plt.subplots(filas, 2, figsize=(12, 4 * filas), squeeze=False)
@@ -512,148 +464,84 @@ def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestr
         alerta_palette = {"Verde": "#2ca02c", "Amarilla": "#fffb00", "Roja": "#ff0000"}
         orden_alertas = ["Roja", "Amarilla", "Verde"]
 
-        print("Fase 2: Generando Alertas y Gráficos...")
-        total_steps = len(lista_carreras_graficar)
-        imprimir_barra_carga(0, total_steps, prefijo='Progreso')
+        # Límite de filas a simular por carrera (Tu límite propuesto)
+        MAX_FILAS_CARRERA = int(max_filas_simuladas)
 
-        # Asignamos ID de estudiante simulado único antes de empezar a graficar
-        if not df_comb_light.empty:
-            df_comb_light['id_estudiante'] = range(1, len(df_comb_light) + 1)
-        
+        # --- BUCLE PRINCIPAL DE PROCESAMIENTO (POR CARRERA) ---
         for i, carr in enumerate(lista_carreras_graficar):
             ax = axes[i] if i < len(axes) else None
             if ax is None:
                 break
+                
+            # Inicializamos df_to_plot por si el if/else falla
+            df_to_plot = pd.DataFrame() 
 
             if carr == carrera_pesada:
-                # Comercial (Lo tratamos igual que las ligeras para simplificar y asegurar estabilidad)
-                df_t_hv = df_Titulados[df_Titulados['nomb_carrera'] == carrera_pesada].copy()
-                df_m_hv = df_Motivacion_est[df_Motivacion_est['nomb_carrera'] == carrera_pesada].drop(columns=['id_estudiante'], errors='ignore')
-                df_p_hv = df_Preparacion_est[df_Preparacion_est['nomb_carrera'] == carrera_pesada].drop(columns=['id_estudiante'], errors='ignore')
+                # Tratamiento para INGENIERIA COMERCIAL (Usando df_Titulados original)
+                df_t_sub = df_Titulados[df_Titulados['nomb_carrera'] == carrera_pesada].copy()
+                df_m_sub = df_mot_est_combinatoria[df_mot_est_combinatoria['nomb_carrera'] == carrera_pesada]
+                df_p_sub = df_prep_est_combinatoria[df_prep_est_combinatoria['nomb_carrera'] == carrera_pesada]
 
-                df_t_hv['duracion_real'] = df_t_hv['año_exacto_titulo'] - df_t_hv['año_exacto_ingreso']
-                df_t_hv['duracion_formal'] = df_t_hv['dur_total_carr']
-                df_t_hv = df_t_hv[['nomb_carrera', 'duracion_real', 'duracion_formal']]
-                
-                # Muestreo Comercial
-                sample_n = min(MAX_FINAL_ROWS, len(df_t_hv), len(df_m_hv), len(df_p_hv))
-                
-                if not df_m_hv.empty and not df_p_hv.empty and sample_n > 0:
-                    tit_sample = df_t_hv.sample(n=sample_n, replace=(len(df_t_hv) < sample_n), random_state=RANDOM_STATE).reset_index(drop=True)
-                    mot_sample = df_m_hv.sample(n=sample_n, replace=(len(df_m_hv) < sample_n), random_state=RANDOM_STATE).reset_index(drop=True)
-                    prep_sample = df_p_hv.sample(n=sample_n, replace=(len(df_p_hv) < sample_n), random_state=RANDOM_STATE).reset_index(drop=True)
-                    
-                    df_to_plot = pd.concat([tit_sample, mot_sample.drop(columns=['nomb_carrera']), prep_sample.drop(columns=['nomb_carrera'])], axis=1)
+                df_t_sub['duracion_real'] = df_t_sub['año_exacto_titulo'] - df_t_sub['año_exacto_ingreso']
+                df_t_sub['duracion_formal'] = df_t_sub['dur_total_carr']
+                df_t_sub = df_t_sub[['nomb_carrera', 'duracion_real', 'duracion_formal']]
+            else:
+                # Tratamiento para carreras "livianas" (Usando df_tit_light)
+                df_t_sub = df_tit_light[df_tit_light['nomb_carrera'] == carr].copy()
+                df_m_sub = df_mot_light[df_mot_light['nomb_carrera'] == carr].copy()
+                df_p_sub = df_prep_light[df_prep_light['nomb_carrera'] == carr].copy()
+            
+            # --- LÓGICA DE MUESTREO Y CRUCE (Unificada) ---
+            if not df_t_sub.empty and not df_m_sub.empty and not df_p_sub.empty:
+                sample_n = min(MAX_FILAS_CARRERA, len(df_t_sub), len(df_m_sub), len(df_p_sub))
+
+                if sample_n > 0:
+                    # FIX: Asegurar que el muestreo use el RANDOM_STATE
+                    tit_sample = df_t_sub.sample(n=sample_n, replace=(len(df_t_sub) < sample_n),
+                                                 random_state=RANDOM_STATE).reset_index(drop=True)
+                    mot_sample = df_m_sub.sample(n=sample_n, replace=(len(df_m_sub) < sample_n),
+                                                 random_state=RANDOM_STATE).reset_index(drop=True)
+                    prep_sample = df_p_sub.sample(n=sample_n, replace=(len(df_p_sub) < sample_n),
+                                                 random_state=RANDOM_STATE).reset_index(drop=True)
+
+                    # Unión Paralela (No Producto Cruzado gigante)
+                    df_to_plot = pd.concat(
+                        [tit_sample,
+                         mot_sample.drop(columns=['nomb_carrera']),
+                         prep_sample.drop(columns=['nomb_carrera'])],
+                        axis=1
+                    )
                     df_to_plot['nomb_carrera'] = carr
                     df_to_plot['fuente'] = 'combinatoria'
-                    df_to_plot['id_estudiante'] = range(1, len(df_to_plot) + 1)
-                else:
-                    df_to_plot = pd.DataFrame()
-            else:
-                df_to_plot = df_comb_light[df_comb_light['nomb_carrera'] == carr].copy()
-
+                    # Aseguramos ID como string para consistencia con df_real
+                    df_to_plot['id_estudiante'] = [str(x) for x in range(1, len(df_to_plot) + 1)]
+                
+            # --- GRAFICAR Y LIMPIAR ---
             if not df_to_plot.empty:
                 df_alerta_carr = Alerta_Estudiantes(df_to_plot, df_Titulados_car)
-
                 sns.histplot(
                     data=df_alerta_carr, x='R_j', bins=20, hue='Alerta',
                     multiple="stack", palette=alerta_palette, hue_order=orden_alertas, ax=ax
                 )
                 ax.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
-
                 del df_alerta_carr
             else:
                 ax.text(0.5, 0.5, "Sin datos", ha='center')
 
             ax.set_title(f'R_j: {carr}', fontsize=10)
             ax.set_xlabel('')
-            imprimir_barra_carga(i + 1, total_steps, prefijo='Progreso')
+            
+            # Limpiar DataFrames temporales para esta carrera
+            del df_t_sub, df_m_sub, df_p_sub, df_to_plot 
+            gc.collect()
 
+        # Apagar ejes sobrantes
         for j in range(i + 1, len(axes)):
             axes[j].axis('off')
 
-        print("\nProceso finalizado.")
         plt.tight_layout()
-
-        del df_comb_light
-        gc.collect()
-
-        # --- 3. PREPARAR FIGURA y BUCLE DE ALERTAS ---
-        lista_carreras_graficar = df_comb_light['nomb_carrera'].unique().tolist()
-        if carrera_pesada in carreras:
-            lista_carreras_graficar.append(carrera_pesada)
-
-        filas = max(1, math.ceil(len(lista_carreras_graficar) / 2))
-        fig_estudiantes, axes = plt.subplots(filas, 2, figsize=(12, 4 * filas), squeeze=False)
-        axes = axes.flatten()
-
-        alerta_palette = {"Verde": "#2ca02c", "Amarilla": "#fffb00", "Roja": "#ff0000"}
-        orden_alertas = ["Roja", "Amarilla", "Verde"]
-
-        print("Fase 2: Generando Alertas y Gráficos...")
-        total_steps = len(lista_carreras_graficar)
-        imprimir_barra_carga(0, total_steps, prefijo='Progreso')
-
-        for i, carr in enumerate(lista_carreras_graficar):
-            ax = axes[i] if i < len(axes) else None
-            if ax is None:
-                break
-
-            if carr == carrera_pesada:
-                # Comercial se trata aparte
-                df_t_hv = df_Titulados[df_Titulados['nomb_carrera'] == carrera_pesada].copy()
-                df_m_hv = df_Motivacion_est[df_Motivacion_est['nomb_carrera'] == carrera_pesada].drop(columns=['id_estudiante'], errors='ignore')
-                df_p_hv = df_Preparacion_est[df_Preparacion_est['nomb_carrera'] == carrera_pesada].drop(columns=['id_estudiante'], errors='ignore')
-
-                df_t_hv['duracion_real'] = df_t_hv['año_exacto_titulo'] - df_t_hv['año_exacto_ingreso']
-                df_t_hv['duracion_formal'] = df_t_hv['dur_total_carr']
-                df_t_hv = df_t_hv[['nomb_carrera', 'duracion_real', 'duracion_formal']]
-                
-                # Muestreo Comercial (usamos la misma técnica)
-                sample_n = min(MAX_SAMPLES_PER_CARRERA, len(df_t_hv), len(df_m_hv), len(df_p_hv))
-                
-                if not df_m_hv.empty and not df_p_hv.empty and sample_n > 0:
-                    tit_sample = df_t_hv.sample(n=sample_n, replace=(len(df_t_hv) < sample_n), random_state=RANDOM_STATE)
-                    mot_sample = df_m_hv.sample(n=sample_n, replace=(len(df_m_hv) < sample_n), random_state=RANDOM_STATE)
-                    prep_sample = df_p_hv.sample(n=sample_n, replace=(len(df_p_hv) < sample_n), random_state=RANDOM_STATE)
-
-                    df_to_plot = tit_sample.merge(mot_sample, how="cross").merge(prep_sample, how="cross")
-                else:
-                    df_to_plot = pd.DataFrame()
-                
-                del tit_sample, mot_sample, prep_sample
-                gc.collect()
-            else:
-                df_to_plot = df_comb_light[df_comb_light['nomb_carrera'] == carr]
-
-            if not df_to_plot.empty:
-                df_to_plot['fuente'] = 'combinatoria'
-                df_to_plot['id_estudiante'] = 0
-
-                df_alerta_carr = Alerta_Estudiantes(df_to_plot, df_Titulados_car)
-
-                sns.histplot(
-                    data=df_alerta_carr, x='R_j', bins=20, hue='Alerta',
-                    multiple="stack", palette=alerta_palette, hue_order=orden_alertas, ax=ax
-                )
-                ax.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
-
-                del df_to_plot, df_alerta_carr
-            else:
-                ax.text(0.5, 0.5, "Sin datos", ha='center')
-
-            ax.set_title(f'R_j: {carr}', fontsize=10)
-            ax.set_xlabel('')
-            imprimir_barra_carga(i + 1, total_steps, prefijo='Progreso')
-
-        for j in range(i + 1, len(axes)):
-            axes[j].axis('off')
-
-        print("\nProceso finalizado.")
-        plt.tight_layout()
-
-        del df_comb_light
-        gc.collect()
+        
+    return fig_carrera, fig_estudiantes
 
     elif tipo_simulacion == "Eliminación":
     # === ELIMINACIÓN: usar TODOS los estudiantes sin simulación ===
