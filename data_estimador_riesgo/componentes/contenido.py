@@ -271,18 +271,28 @@ class State(rx.State):
             self.logs.append(f"Orden: {nombre} bajó.")
             self.guardar_estado_usuario()
 
-    # --- UPLOAD FILTRADO EN DISCO (SOLUCIÓN A TU PROBLEMA DE MEMORIA) ---
+    # --- UPLOAD CORREGIDO QUE USA LA VARIABLE 'Simulado' ---
     async def handle_upload(self, files: list[rx.UploadFile]):
         self.procesando = True
         self.progreso = 5
-        self.logs.append("--- Iniciando carga ---")
+        
+        # DEBUG: Confirmar qué valor tiene la variable al momento de subir
+        msg_inicio = f"--- Iniciando carga (Simulado: {self.es_simulado}) ---"
+        print(f"DEBUG: {msg_inicio}")
+        self.logs.append(msg_inicio)
         yield 
+
+        # --- INICIALIZACIÓN DE VARIABLES DE PROGRESO ---
+        num_files = len(files)
+        # Distribuimos 90 puntos de progreso entre los archivos para que el último paso sea 100
+        progress_increment = 90 // max(1, num_files) 
+        current_progress = 5 
+        # -----------------------------------------------
 
         for i, file in enumerate(files):
             nombre = file.filename
             if nombre not in self.archivos_visuales: self.archivos_visuales.append(nombre)
             
-# --- CORRECCIÓN: Rutas absolutas en carpeta segura ---
             tmp_in = os.path.join(CARPETA_DATOS, f"temp_in_{int(time.time())}_{i}.csv")
             tmp_out = os.path.join(CARPETA_DATOS, f"temp_out_{int(time.time())}_{i}.csv")
             
@@ -290,59 +300,82 @@ class State(rx.State):
                 self.logs.append(f"Recibiendo: {nombre}...")
                 yield
 
-                # 1. Guardar crudo en disco (Streaming)
+                # Guardar
                 with open(tmp_in, "wb") as buffer:
                     while True:
-                        chunk = await file.read(1024*1024) # 1MB chunks
+                        chunk = await file.read(1024*1024) 
                         if not chunk: break
                         buffer.write(chunk)
-                
-                # Liberar RAM
                 gc.collect()
 
-                self.logs.append(f"Filtrando: {nombre}...")
+                self.logs.append(f"Validando: {nombre}...")
                 yield
                 
-                # --- AQUÍ ESTÁ LA CORRECCIÓN: Pasamos el valor de es_simulado ---
+                # --- PRE-VALIDACIÓN (Para fallar rápido si no hay ID) ---
+                try:
+                    df_header = pd.read_csv(tmp_in, nrows=0, sep=None, engine='python')
+                    cols_norm = [c.strip().lower() for c in df_header.columns]
+                    
+                    if self.es_simulado == "No":
+                        tiene_id = "id_estudiante" in cols_norm or "id_est" in cols_norm or "id_estudiante" in df_header.columns
+                        
+                        if not tiene_id:
+                            raise ValueError(f"ERROR: Seleccionaste 'No Simulado', pero el archivo '{nombre}' no tiene columna 'id_estudiante'.")
+                
+                except pd.errors.EmptyDataError:
+                    raise Exception(f"El archivo '{nombre}' está vacío.")
+                except ValueError as ve:
+                    raise ve 
+                except Exception as e:
+                    print(f"Advertencia validando headers: {e}")
+
+                # 2. Filtrar y Validar (Llamada al código externo)
                 filas = Filtrar_Archivo_En_Disco(tmp_in, tmp_out, es_simulado=self.es_simulado)
                 
                 if filas > 0:
-                    # Mover archivo filtrado a carpeta segura
                     final_path = os.path.join(CARPETA_DATOS, f"{self.usuario_actual}_{int(time.time())}_{i}.csv")
                     shutil.move(tmp_out, final_path)
                     
-                    # Guardar RUTA en vez de DATOS
                     if len(self.df_rutas) < len(self.archivos_visuales):
                         self.df_rutas.append(final_path)
                     else:
                         idx = self.archivos_visuales.index(nombre)
                         self.df_rutas[idx] = final_path
-                        
-                    self.logs.append(f"-> OK ({filas} filas).")
+                    self.logs.append(f"-> OK ({filas} filas válidas).")
                 else:
-                    self.logs.append(f"Advertencia: '{nombre}' vacío o sin carreras válidas.")
+                    self.logs.append(f"Advertencia: '{nombre}' vacío o sin carreras de interés.")
                     
-            except Exception as e:
-                self.logs.append(f"Error: {str(e)[:100]}")
+            except ValueError as ve:
+                msg = str(ve)
+                self.logs.append(f"RECHAZADO: {msg}")
                 if nombre in self.archivos_visuales: self.eliminar_archivo(nombre)
-                yield rx.toast.error("Error al procesar archivo.", duration=5000)
+                yield rx.window_alert(msg)
+            
+            except Exception as e:
+                print(f"Error grave: {e}")
+                self.logs.append(f"Error técnico: {str(e)[:50]}")
+                if nombre in self.archivos_visuales: self.eliminar_archivo(nombre)
+                yield rx.toast.error("Error al procesar archivo.", duration=3000)
             
             finally:
-                # Limpieza de temporales
-                for f in [tmp_in, tmp_out]:
-                    if os.path.exists(f): 
-                        try: os.remove(f)
-                        except: pass
+                if os.path.exists(tmp_in): 
+                    try: os.remove(tmp_in)
+                    except: pass
+                if os.path.exists(tmp_out):
+                     try: os.remove(tmp_out)
+                     except: pass
                 gc.collect()
 
-            self.progreso += 33
+            # --- CORRECCIÓN DE PROGRESO: Aseguramos que no pase de 99 ---
+            current_progress += progress_increment
+            self.progreso = min(current_progress, 99) 
             yield 
 
         self.guardar_estado_usuario()
-        self.progreso = 100
+        self.progreso = 100 
         self.procesando = False
         self.logs.append("--- Carga finalizada ---")
-        yield rx.toast.success("Carga lista.")
+        yield rx.toast.success("Proceso completado.")
 
     # --- GRAFICAR LEYENDO DESDE DISCO ---
     async def generar_graficos(self):
