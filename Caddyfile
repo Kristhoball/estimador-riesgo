@@ -1,25 +1,30 @@
 :8080 {
-    log
-    encode gzip
+log
+encode gzip
 
-    # 1. Rutas de API (Manejo explícito de la subida y eventos)
-    
-    handle /_upload* {
-        reverse_proxy localhost:8000
-    }
-    
-    handle /_event* {
-        reverse_proxy localhost:8000
-    }
-    
-    handle /ping {
-        reverse_proxy localhost:8000
-    }
+# 1. Rutas de API
 
-    # 2. Archivos estáticos (Frontend)
-    handle {
-        root * .web/_static
-        try_files {path} {path}/ /index.html
-        file_server
-    }
+handle /_upload* {
+    # CAMBIO CLAVE: De localhost a 127.0.0.1
+    reverse_proxy 127.0.0.1:8000
+}
+
+handle /_event* {
+    # CAMBIO CLAVE: De localhost a 127.0.0.1
+    reverse_proxy 127.0.0.1:8000
+}
+
+handle /ping {
+    # CAMBIO CLAVE: De localhost a 127.0.0.1
+    reverse_proxy 127.0.0.1:8000
+}
+
+# 2. Archivos estáticos
+handle {
+    root * .web/_static
+    try_files {path} {path}/ /index.html
+    file_server
+}
+
+
 }
