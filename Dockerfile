@@ -20,7 +20,7 @@ RUN apt-get update && apt-get install -y \
     && apt-get update && apt-get install -y caddy \
     && rm -rf /var/lib/apt/lists/*
 
-"""ACTUALIZACION"""
+# NUEVO
 RUN useradd -m -u 1000 user
 USER user
 ENV HOME=/home/user \
