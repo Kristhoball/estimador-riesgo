@@ -1,11 +1,9 @@
-# 1. Imagen base
 FROM python:3.11-slim
 
-# 2. Configuración
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# 3. Instalar dependencias
+# 1. Instalar dependencias y Caddy
 RUN apt-get update && apt-get install -y \
     curl unzip util-linux \
     debian-keyring debian-archive-keyring apt-transport-https \
@@ -14,48 +12,45 @@ RUN apt-get update && apt-get install -y \
     && apt-get update && apt-get install -y caddy \
     && rm -rf /var/lib/apt/lists/*
 
-# 4. Usuario
+# 2. Usuario
 RUN useradd -m -u 1000 user
 USER user
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH
 WORKDIR $HOME/app
 
-# 5. Copiar archivos
+# 3. Archivos
 COPY --chown=user requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
 COPY --chown=user . .
 
-# 6. Limpieza de permisos
+# 4. Limpieza y Script de arranque
 RUN rm -f .gitignore requirements.txt
+# Damos permiso de ejecución al script (Importante)
+RUN chmod +x start.sh
 
-# 7. Inicializar
+# 5. Inicializar
 RUN reflex init
 
-# 8. URL Pública (HTTPS)
+# 6. URL Pública
 ENV REFLEX_API_URL=https://estimador-riesgo.zeabur.app
 
-# 9. Construir la Web
+# 7. Construir Web
 RUN reflex export --frontend-only --no-zip
 
-# 10. Configuración de Caddy (SIMPLIFICADA Y ROBUSTA)
-# Aquí estaba el problema. Ahora definimos la raíz globalmente.
+# 8. Caddyfile (CONFIGURACIÓN ESTÁNDAR SPA)
+# Esta configuración es más segura para evitar conflictos de rutas
 RUN echo "{\n\
     auto_https off\n\
 }\n\
 \n\
 :8080 {\n\
-    bind 0.0.0.0\n\
+    # Compresión para que cargue rápido\n\
+    encode gzip\n\
     \n\
-    # Definimos dónde están los archivos de la web\n\
-    root * /home/user/app/.web/_static\n\
-    \n\
-    # Habilitamos el servidor de archivos\n\
-    file_server\n\
-    \n\
-    # Reglas para el Backend (Python)\n\
+    # Rutas del Backend\n\
     handle /_event/* {\n\
         reverse_proxy 127.0.0.1:8000\n\
     }\n\
@@ -63,9 +58,13 @@ RUN echo "{\n\
         reverse_proxy 127.0.0.1:8000\n\
     }\n\
     \n\
-    # Regla para la Web (SPA) - Si no encuentra el archivo, muestra index.html\n\
-    try_files {path} {path}/ /index.html\n\
+    # Ruta del Frontend (Todo lo demás)\n\
+    handle {\n\
+        root * /home/user/app/.web/_static\n\
+        try_files {path} {path}/ /index.html\n\
+        file_server\n\
+    }\n\
 }" > Caddyfile
 
-# 11. Arranque
-CMD ["sh", "-c", "reflex run --env prod --backend-only --backend-port 8000 & caddy run --config Caddyfile --adapter caddyfile"]
+# 9. Ejecutar script
+CMD ["./start.sh"]
