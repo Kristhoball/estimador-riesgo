@@ -422,10 +422,6 @@ def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestr
 
 # Dentro de la función Calcular_Resultados_Finales:
 
-# Dentro de la función Calcular_Resultados_Finales:
-
-# Dentro de la función Calcular_Resultados_Finales:
-
     elif tipo_simulacion == "Combinatoria":
         # ===========================================================
         # COMBINATORIA LIGERA PARA WEB: Procesamiento por carrera
@@ -539,8 +535,6 @@ def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestr
             axes[j].axis('off')
 
         plt.tight_layout()
-        
-    return fig_carrera, fig_estudiantes
 
     elif tipo_simulacion == "Eliminación":
     # === ELIMINACIÓN: usar TODOS los estudiantes sin simulación ===
