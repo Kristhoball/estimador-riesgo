@@ -1,45 +1,37 @@
 FROM python:3.11-slim
 
+# 1. Configuración básica
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# 1. Instalar dependencias del sistema y Caddy
+# 2. Instalar Caddy (Servidor Web) y herramientas del sistema (¡AÑADIDO UNZIP!)
 RUN apt-get update && apt-get install -y \
-    curl unzip util-linux \
-    debian-keyring debian-archive-keyring apt-transport-https \
+    curl unzip debian-keyring debian-archive-keyring apt-transport-https \
     && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg \
     && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list \
     && apt-get update && apt-get install -y caddy \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Configurar Usuario (Seguridad)
+# 3. Crear usuario (Seguridad)
 RUN useradd -m -u 1000 user
 USER user
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH
 WORKDIR $HOME/app
 
-# 3. Instalar dependencias de Python
+# 4. Instalar Dependencias Python
 COPY --chown=user requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# 4. Copiar todo el código (Aquí debe venir la carpeta que falta)
+# 5. Copiar Código
 COPY --chown=user . .
 
-# 5. Limpieza y permisos
-# Borramos venv si se copió por error para no confundir a Python
-RUN rm -rf venv .gitignore
-RUN chmod +x start.sh
-
-# 6. Configurar URL del backend (AJUSTA ESTO SI ES NECESARIO)
-ENV REFLEX_API_URL=https://estimador-riesgo.zeabur.app
-
-# 7. Construir el Frontend (Exportar a estático)
-# Al quitar 'reflex init', confiamos en que tu código ya está ahí
+# 6. Construir Frontend (Reflex Export)
+# Esto crea la carpeta .web/_static
 RUN reflex export --frontend-only --no-zip
 
-# 8. Configurar Caddy (Servidor Web)
+# 7. Configurar Caddy (Conecta puerto 8080 -> 8000)
 RUN echo "{\n\
     auto_https off\n\
 }\n\
@@ -59,5 +51,5 @@ RUN echo "{\n\
     }\n\
 }" > Caddyfile
 
-# 9. Ejecutar script de arranque
+# 8. Comando de arranque
 CMD ["./start.sh"]
