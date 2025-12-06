@@ -2,11 +2,12 @@
 FROM python:3.11
 
 # 1. Configuración básica y ROMPE-CACHÉ
-ENV CACHE_BUST=20250228_2
+# Incrementamos esto para asegurar que Zeabur reconstruya todo
+ENV CACHE_BUST=20250228_3
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# 2. Instalar Caddy y herramientas (incluyendo zip y unzip explícitamente)
+# 2. Instalar Caddy y herramientas del sistema
 RUN apt-get update && apt-get install -y \
     curl \
     unzip \
@@ -26,9 +27,11 @@ ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH
 WORKDIR $HOME/app
 
-# 4. VERIFICACIÓN CRÍTICA (Como usuario)
-# Si unzip no es accesible aquí, la construcción fallará inmediatamente
-RUN echo "Verificando unzip..." && which unzip && unzip -v | head -n 1
+# 4. INSTALACIÓN MANUAL DE BUN (La Solución Definitiva)
+# Al instalar Bun manualmente, evitamos que Reflex intente hacerlo y falle buscando unzip.
+RUN curl -fsSL https://bun.sh/install | bash
+# Agregamos Bun al PATH para que Reflex lo encuentre
+ENV PATH="/home/user/.bun/bin:$PATH"
 
 # 5. Instalar Dependencias Python
 COPY --chown=user requirements.txt .
@@ -44,6 +47,7 @@ RUN chmod +x start.sh
 USER user
 
 # 8. Construir Frontend (Reflex Export)
+# Ahora Reflex encontrará 'bun' en el PATH y se saltará la instalación automática
 RUN reflex export --frontend-only --no-zip
 
 # 9. Configurar Caddy
