@@ -110,8 +110,14 @@ def Neyman_2poblaciones(df_Motivacion, df_Preparacion, carrera='nomb_carrera', v
         N_p = len(grupo_p)
         N_comb = min(N_m, N_p)
         
-        S_m = grupo_m[variable_mot].std(ddof=1).fillna(0)
-        S_p = grupo_p[variable_prep].std(ddof=1).fillna(0)
+        # --- FIX: Corrección del error 'numpy.float64 object has no attribute fillna' ---
+        # .std() devuelve un escalar, no una serie. Usamos pd.isna() en su lugar.
+        S_m = grupo_m[variable_mot].std(ddof=1)
+        if pd.isna(S_m): S_m = 0.0
+        
+        S_p = grupo_p[variable_prep].std(ddof=1)
+        if pd.isna(S_p): S_p = 0.0
+        # --------------------------------------------------------------------------------
         
         S_comb = np.nanmean([S_m, S_p])
         S_comb = 0.0 if np.isnan(S_comb) else S_comb
@@ -208,11 +214,9 @@ def etiquetar_alerta_desde_prob(R):
 def Alerta_Estudiantes(df, df_Titulados_car, permitir_incompletos=False):
     df_final_est = df.copy()
     
-    # 1. Normalización de ID
     if 'id_simulado' in df_final_est.columns:
         df_final_est = df_final_est.rename(columns={'id_simulado': 'id_estudiante'})
     
-    # 2. Aseguramos columnas
     required_cols = ['id_estudiante', 'nomb_carrera', 'r_j', 'P_j', 'PA_j','fuente']
     for col in required_cols:
         if col not in df_final_est.columns:
@@ -221,12 +225,10 @@ def Alerta_Estudiantes(df, df_Titulados_car, permitir_incompletos=False):
              else:
                  raise ValueError(f"Error en Alerta_Estudiantes: Falta columna '{col}'")
 
-    # 3. Tipos numéricos
     df_final_est['r_j'] = df_final_est['r_j'].astype(float)
     df_final_est['P_j'] = df_final_est['P_j'].astype(float)
     df_final_est['PA_j'] = df_final_est['PA_j'].astype(float)
 
-    # ❗ Manejo de faltantes (RESTITUIDO)
     if not permitir_incompletos:
         # Para Neyman / Combinatoria: solo casos completos
         df_final_est = df_final_est.dropna(subset=['r_j','P_j','PA_j'], how='any')
