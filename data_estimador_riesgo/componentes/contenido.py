@@ -21,14 +21,16 @@ from .codigo2 import Calcular_Resultados_Finales
 # =========================================================================
 USUARIOS_CACHE = {} 
 TIEMPO_EXPIRACION_MINUTOS = 30 
-CARPETA_DATOS = "datos_usuarios_temp" # Carpeta para guardar los CSV procesados
 
-# Aseguramos que exista la carpeta temporal
+# --- CORRECCIÓN: Usar carpeta temporal del SISTEMA (fuera del proyecto) ---
+CARPETA_SISTEMA_TEMP = tempfile.gettempdir()
+CARPETA_DATOS = os.path.join(CARPETA_SISTEMA_TEMP, "datos_usuarios_riesgo")
+
 if not os.path.exists(CARPETA_DATOS):
     try:
         os.makedirs(CARPETA_DATOS)
-    except:
-        pass
+    except Exception as e:
+        print(f"Error creando carpeta temporal: {e}")
 
 class State(rx.State):
     usuario_cookie: str = rx.Cookie("")
@@ -280,9 +282,9 @@ class State(rx.State):
             nombre = file.filename
             if nombre not in self.archivos_visuales: self.archivos_visuales.append(nombre)
             
-            # Usamos archivos temporales
-            tmp_in = f"temp_in_{int(time.time())}_{i}.csv"
-            tmp_out = f"temp_out_{int(time.time())}_{i}.csv"
+# --- CORRECCIÓN: Rutas absolutas en carpeta segura ---
+            tmp_in = os.path.join(CARPETA_DATOS, f"temp_in_{int(time.time())}_{i}.csv")
+            tmp_out = os.path.join(CARPETA_DATOS, f"temp_out_{int(time.time())}_{i}.csv")
             
             try:
                 self.logs.append(f"Recibiendo: {nombre}...")
