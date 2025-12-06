@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 import gc # Garbage Collector para liberar memoria
-
 # Configuramos un estado aleatorio global para la reproducibilidad
 np.random.seed(42)
 RANDOM_STATE = 42
