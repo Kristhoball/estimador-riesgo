@@ -13,10 +13,10 @@ config = rx.Config(
 
     # --- CORRECCIONES ---
     
-    # 1. Mantenemos esto para limpiar el log (es válido según tu warning anterior)
+    # 1. Quitamos el warning del sitemap
     disable_plugins=["reflex.plugins.sitemap.SitemapPlugin"],
-
-    # 2. ELIMINADO: api=rx.ApiConfig(...) 
-    # Causa el error "AttributeError: No reflex attribute ApiConfig".
-    # Reflex gestionará la subida con los valores predeterminados del servidor.
+    
+    # 2. Aumentamos el tiempo de espera del backend a 20 minutos.
+    # Esto ayuda a que no se corte la conexión si el archivo tarda en procesarse.
+    timeout=1200,
 )
