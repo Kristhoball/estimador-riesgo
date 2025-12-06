@@ -22,38 +22,46 @@ ENV HOME=/home/user \
 WORKDIR $HOME/app
 
 # 5. Copiar archivos
-COPY requirements.txt .
+COPY --chown=user requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
-COPY . .
 
-# 6. Limpiar permisos
+COPY --chown=user . .
+
+# 6. Limpieza de permisos
 RUN rm -f .gitignore requirements.txt
 
 # 7. Inicializar
 RUN reflex init
+
+# 8. URL Pública (HTTPS)
+# Reemplaza con tu dominio real si cambia
+ENV REFLEX_API_URL=https://estimador-riesgo.zeabur.app
+
+# 9. Construir la Web
 RUN reflex export --frontend-only --no-zip
 
-# --- CONFIGURACIÓN CORREGIDA ---
-# Usamos ":8080" (sin IP) para aceptar cualquier dominio que venga de Zeabur
+# 10. Configuración de Caddy (CON RUTAS ABSOLUTAS)
 RUN echo "{\n\
     auto_https off\n\
 }\n\
 \n\
 :8080 {\n\
-    bind 0.0.0.0\n\
+    # Backend (Python)\n\
     handle /_event/* {\n\
         reverse_proxy 127.0.0.1:8000\n\
     }\n\
     handle /ping {\n\
         reverse_proxy 127.0.0.1:8000\n\
     }\n\
+    \n\
+    # Frontend (Archivos Estáticos)\n\
     handle /* {\n\
-        root * .web/_static\n\
+        root * /home/user/app/.web/_static\n\
         file_server\n\
         try_files {path} {path}/ /index.html\n\
     }\n\
 }" > Caddyfile
 
-# 8. Arranque
+# 11. Arrancar
 CMD ["sh", "-c", "reflex run --env prod --backend-only --backend-port 8000 & caddy run --config Caddyfile --adapter caddyfile"]
