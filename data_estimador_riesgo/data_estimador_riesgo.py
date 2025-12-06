@@ -26,6 +26,5 @@ def index() -> rx.Component:
 
 
 app = rx.App() # Crear una instancia de la app
-app.add_page(index) # Registrar la función 'index' como página principal
-app._compile() # Compilar la app para que Reflex genere los archivos necesarios
+app.add_page(index, route="/")
 
