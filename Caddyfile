@@ -1,21 +1,25 @@
-{
-    admin off
-    auto_https off
-}
-
 :8080 {
     log
     encode gzip
 
-    # 1. Definimos las rutas de la API (Backend de Python)
-    route /_upload* /_event* /ping {
+    # 1. Rutas de API (Manejo explícito de la subida y eventos)
+    
+    handle /_upload* {
+        reverse_proxy localhost:8000
+    }
+    
+    handle /_event* {
+        reverse_proxy localhost:8000
+    }
+    
+    handle /ping {
         reverse_proxy localhost:8000
     }
 
-    # 2. Servimos archivos estáticos (Frontend, Assets, HTML)
-    root * .web/_static
-    
-    # Intenta servir el archivo solicitado, si no existe, sirve index.html
-    try_files {path} {path}/ /index.html
-    file_server
+    # 2. Archivos estáticos (Frontend)
+    handle {
+        root * .web/_static
+        try_files {path} {path}/ /index.html
+        file_server
+    }
 }
