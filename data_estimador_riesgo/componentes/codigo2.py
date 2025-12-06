@@ -422,9 +422,9 @@ def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestr
         fig_estudiantes = Grafico_Estudiantes_Web(df_final_est)
 
     elif tipo_simulacion == "Combinatoria":
-        # ... (Código de Combinatoria - Sin cambios)
-        import sys 
+        import sys  # Necesario para la barra de carga
 
+        # --- FUNCIÓN VISUAL DE BARRA DE CARGA ---
         def imprimir_barra_carga(iteracion, total, prefijo='', longitud=40):
             if total == 0:  # Evitar división por cero
                 sys.stdout.write(f'\r{prefijo} |{"-"*longitud}| 0% Completado')
@@ -436,36 +436,57 @@ def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestr
             sys.stdout.write(f'\r{prefijo} |{barra}| {porcentaje}% Completado')
             sys.stdout.flush()
 
+        # --- 1. PREPARACIÓN DE DATOS ---
         carrera_pesada = 'INGENIERIA COMERCIAL'
         carreras = df_Motivacion_est['nomb_carrera'].unique()
 
+        # Eliminar id_estudiante antes de combinatoria
         if 'id_estudiante' in df_Motivacion_est.columns:
             df_Motivacion_est = df_Motivacion_est.drop(columns=['id_estudiante'])
         if 'id_estudiante' in df_Preparacion_est.columns:
             df_Preparacion_est = df_Preparacion_est.drop(columns=['id_estudiante'])
 
+        # Filtrar carreras livianas
         df_mot_light = df_Motivacion_est[df_Motivacion_est['nomb_carrera'] != carrera_pesada]
         df_prep_light = df_Preparacion_est[df_Preparacion_est['nomb_carrera'] != carrera_pesada]
         df_tit_light = df_Titulados[df_Titulados['nomb_carrera'] != carrera_pesada].copy()
 
+        # Calcular duración
         df_tit_light['duracion_real'] = df_tit_light['año_exacto_titulo'] - df_tit_light['año_exacto_ingreso']
         df_tit_light['duracion_formal'] = df_tit_light['dur_total_carr']
         df_tit_light = df_tit_light[['nomb_carrera', 'duracion_real', 'duracion_formal']]
 
+        # --- 2. COMBINATORIA POR CARRERA (Optimizada) ---
         print("Fase 1: Realizando Combinatoria por carrera (excluyendo Comercial)...")
-        resultados = []
-        for carr in df_tit_light['nomb_carrera'].unique():
-            tit_sub = df_tit_light[df_tit_light['nomb_carrera'] == carr]
-            mot_sub = df_mot_light[df_mot_light['nomb_carrera'] == carr]
-            prep_sub = df_prep_light[df_prep_light['nomb_carrera'] == carr]
+        resultados = [] # Lista para almacenar el resultado final
+        
+        carreras_light = df_tit_light['nomb_carrera'].unique()
+        
+        # BUCLE OPTIMIZADO: Hacemos la combinatoria y la agregamos a la lista, liberando sub-dataframes
+        for carr in carreras_light:
+            tit_sub = df_tit_light[df_tit_light['nomb_carrera'] == carr].copy()
+            mot_sub = df_mot_light[df_mot_light['nomb_carrera'] == carr].copy()
+            prep_sub = df_prep_light[df_prep_light['nomb_carrera'] == carr].copy()
 
             if not tit_sub.empty and not mot_sub.empty and not prep_sub.empty:
+                # Combinatoria
                 comb = tit_sub.merge(mot_sub, how="cross").merge(prep_sub, how="cross")
+                comb['nomb_carrera'] = carr # Aseguramos la columna de carrera
                 resultados.append(comb)
-
+            
+            # Liberar memoria de los sub-DataFrames después de usarlos
+            del tit_sub, mot_sub, prep_sub
+            gc.collect() 
+        
+        # Concatenamos la lista final (más eficiente que concatenar miles de veces)
         df_comb_light = pd.concat(resultados, ignore_index=True) if resultados else pd.DataFrame()
         print(f"Combinatoria completada. Filas generadas: {len(df_comb_light)}")
+        
+        # Limpiamos la lista de resultados y forzamos GC
+        del resultados
+        gc.collect() 
 
+        # --- 3. PREPARAR FIGURA y BUCLE DE ALERTAS (Mantenemos tu lógica para evitar errores) ---
         lista_carreras_graficar = df_comb_light['nomb_carrera'].unique().tolist()
         if carrera_pesada in carreras:
             lista_carreras_graficar.append(carrera_pesada)
@@ -487,6 +508,7 @@ def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestr
                 break
 
             if carr == carrera_pesada:
+                # Comercial se trata aparte
                 df_t_hv = df_Titulados[df_Titulados['nomb_carrera'] == carrera_pesada].copy()
                 df_m_hv = df_Motivacion_est[df_Motivacion_est['nomb_carrera'] == carrera_pesada]
                 df_p_hv = df_Preparacion_est[df_Preparacion_est['nomb_carrera'] == carrera_pesada]
