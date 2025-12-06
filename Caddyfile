@@ -1,0 +1,27 @@
+{
+# Opciones globales para que no falle en Zeabur
+admin off
+auto_https off
+}
+
+:8080 {
+# 1. Logs para ver errores si ocurren
+log
+
+# 2. RUTA MÁGICA (Solución al error 405)
+# Le decimos a Zeabur: "Si alguien quiere subir algo, mándalo al Python (puerto 8000)"
+route {
+    reverse_proxy /_event/* localhost:8000
+    reverse_proxy /_upload/* localhost:8000
+    reverse_proxy /ping localhost:8000
+
+    # 3. SITIO WEB (Frontend)
+    # Todo lo demás son archivos visuales de la web
+    root * .web/_static
+    encode gzip
+    try_files {path} {path}/ /index.html
+    file_server
+}
+
+
+}
