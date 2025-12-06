@@ -1,9 +1,8 @@
-# CAMBIO 1: Usamos la imagen COMPLETA (no slim) para asegurar compatibilidad
+# CAMBIO 1: Usamos la imagen COMPLETA
 FROM python:3.11
 
 # 1. Configuración básica y ROMPE-CACHÉ
-# Incrementamos esto para asegurar que Zeabur reconstruya todo
-ENV CACHE_BUST=20251206_6
+ENV CACHE_BUST=20251206_5
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
@@ -20,14 +19,14 @@ RUN apt-get update && apt-get install -y \
     && apt-get update && apt-get install -y caddy \
     && rm -rf /var/lib/apt/lists/*
 
-# NUEVO
+# 3. Crear usuario
 RUN useradd -m -u 1000 user
 USER user
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH
 WORKDIR $HOME/app
 
-# 4. INSTALACIÓN MANUAL DE BUN (La Solución Definitiva)
+# 4. INSTALACIÓN MANUAL DE BUN 
 RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/home/user/.bun/bin:$PATH"
 
@@ -36,7 +35,8 @@ COPY --chown=user requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# 6. Copiar Código (Esto copiará tu Caddyfile BUENO desde el repo)
+# 6. COPIAR CÓDIGO Y FORZAR LA COMPATIBILIDAD
+# Copiamos todos los archivos nuevos (incluido el Caddyfile y tu lógica)
 COPY --chown=user . .
 
 # 7. Asegurar permisos de ejecución
@@ -44,10 +44,7 @@ USER root
 RUN chmod +x start.sh
 USER user
 
-# 8. Exportar frontend
+# 8. Exportar frontend (DEBE encontrar el nuevo código Python en su lugar)
 RUN reflex export --frontend-only --no-zip
-
-# NOTA: AQUÍ BORRAMOS EL BLOQUE 'RUN echo' MALDITO. 
-# Ahora usará el archivo 'Caddyfile' real de tu repositorio.
 
 CMD ["bash", "./start.sh"]
