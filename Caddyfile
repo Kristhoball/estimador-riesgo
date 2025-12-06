@@ -4,12 +4,18 @@ auto_https off
 }
 :8080 {
 log
-route {
-    reverse_proxy /_event/* localhost:8000
-    reverse_proxy /_upload/* localhost:8000
-    reverse_proxy /ping localhost:8000
+encode gzip
+handle /_upload/* {
+    reverse_proxy 127.0.0.1:8000
+}
+handle /_event/* {
+    reverse_proxy 127.0.0.1:8000
+}
+handle /ping {
+    reverse_proxy 127.0.0.1:8000
+}
+handle {
     root * .web/_static
-    encode gzip
     try_files {path} {path}/ /index.html
     file_server
 }
