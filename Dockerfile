@@ -1,47 +1,54 @@
 FROM python:3.11-slim
 
-# 1. Configuración básica
+# 1. Configuración básica y ROMPE-CACHÉ
+# Cambia este número si necesitas forzar una reconstrucción completa en el futuro
+ENV CACHE_BUST=20250228_1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# 2. Instalar herramientas del sistema (Separamos unzip para asegurar que se instale)
-# Al cambiar esta línea, forzamos a Zeabur a reconstruir esta capa
-RUN apt-get update && apt-get install -y \
+# 2. Instalar herramientas del sistema
+# Usamos --no-install-recommends para mantenerlo ligero, pero aseguramos unzip
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     unzip \
     debian-keyring \
     debian-archive-keyring \
     apt-transport-https \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# 3. Instalar Caddy (Servidor Web)
+# 3. VERIFICACIÓN (Esto fallará la build si unzip no se instaló, avisándonos antes)
+RUN which unzip && unzip -v | head -n 1
+
+# 4. Instalar Caddy (Servidor Web)
 RUN curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg \
     && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list \
     && apt-get update && apt-get install -y caddy \
     && rm -rf /var/lib/apt/lists/*
 
-# 4. Crear usuario (Seguridad)
+# 5. Crear usuario (Seguridad)
 RUN useradd -m -u 1000 user
 USER user
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH
 WORKDIR $HOME/app
 
-# 5. Instalar Dependencias Python
+# 6. Instalar Dependencias Python
 COPY --chown=user requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# 6. Copiar Código
+# 7. Copiar Código
 COPY --chown=user . .
 
-# 7. Asegurar permisos de ejecución (Vital para Windows/Git)
+# 8. Asegurar permisos de ejecución
 RUN chmod +x start.sh
 
-# 8. Construir Frontend (Reflex Export)
+# 9. Construir Frontend (Reflex Export)
+# Ahora unzip está garantizado, así que esto no debería fallar
 RUN reflex export --frontend-only --no-zip
 
-# 9. Configurar Caddy (Conecta puerto 8080 -> 8000)
+# 10. Configurar Caddy
 RUN echo "{\n\
     auto_https off\n\
 }\n\
@@ -61,5 +68,5 @@ RUN echo "{\n\
     }\n\
 }" > Caddyfile
 
-# 10. Comando de arranque (Usamos bash explícitamente)
+# 11. Comando de arranque
 CMD ["bash", "./start.sh"]
