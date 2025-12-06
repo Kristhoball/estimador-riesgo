@@ -423,12 +423,14 @@ def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestr
 
 # Dentro de la función Calcular_Resultados_Finales:
 
+# Dentro de la función Calcular_Resultados_Finales:
+
     elif tipo_simulacion == "Combinatoria":
         import sys 
 
         # --- FUNCIÓN VISUAL DE BARRA DE CARGA ---
         def imprimir_barra_carga(iteracion, total, prefijo='', longitud=40):
-            if total == 0:  # Evitar división por cero
+            if total == 0:
                 sys.stdout.write(f'\r{prefijo} |{"-"*longitud}| 0% Completado')
                 sys.stdout.flush()
                 return
@@ -438,53 +440,66 @@ def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestr
             sys.stdout.write(f'\r{prefijo} |{barra}| {porcentaje}% Completado')
             sys.stdout.flush()
 
-        # --- 1. PREPARACIÓN DE DATOS (Mantenemos la lógica de light/pesada) ---
+        # --- 1. PREPARACIÓN DE DATOS ---
         carrera_pesada = 'INGENIERIA COMERCIAL'
         carreras = df_Motivacion_est['nomb_carrera'].unique()
+        
+        # Eliminación de IDs (necesario para el merge cross)
+        df_mot_est_combinatoria = df_Motivacion_est.drop(columns=['id_estudiante'], errors='ignore')
+        df_prep_est_combinatoria = df_Preparacion_est.drop(columns=['id_estudiante'], errors='ignore')
 
-        # Eliminar id_estudiante antes de combinatoria
-        if 'id_estudiante' in df_Motivacion_est.columns:
-            df_Motivacion_est = df_Motivacion_est.drop(columns=['id_estudiante'])
-        if 'id_estudiante' in df_Preparacion_est.columns:
-            df_Preparacion_est = df_Preparacion_est.drop(columns=['id_estudiante'])
-
-        # Filtros de DataFrames ligeros
-        df_mot_light = df_Motivacion_est[df_Motivacion_est['nomb_carrera'] != carrera_pesada]
-        df_prep_light = df_Preparacion_est[df_Preparacion_est['nomb_carrera'] != carrera_pesada]
+        # Filtrar carreras livianas
+        df_mot_light = df_mot_est_combinatoria[df_mot_est_combinatoria['nomb_carrera'] != carrera_pesada]
+        df_prep_light = df_prep_est_combinatoria[df_prep_est_combinatoria['nomb_carrera'] != carrera_pesada]
         df_tit_light = df_Titulados[df_Titulados['nomb_carrera'] != carrera_pesada].copy()
 
-        # Cálculo de duración de titulados light
+        # Calcular duración
         df_tit_light['duracion_real'] = df_tit_light['año_exacto_titulo'] - df_tit_light['año_exacto_ingreso']
         df_tit_light['duracion_formal'] = df_tit_light['dur_total_carr']
         df_tit_light = df_tit_light[['nomb_carrera', 'duracion_real', 'duracion_formal']]
-
-        # --- 2. COMBINATORIA POR CARRERA (Optimización de memoria y velocidad) ---
-        print("Fase 1: Realizando Combinatoria por carrera (excluyendo Comercial)...")
+        
+        # --- 2. COMBINATORIA MUESTRADA (Menos riesgo de RAM) ---
+        print("Fase 1: Realizando Combinatoria Muestreada (para evitar colapso de RAM)...")
         resultados = [] 
         
         carreras_light = df_tit_light['nomb_carrera'].unique()
         
+        # ASIGNACIÓN DE MUESTRA (Máximo 500 filas simuladas por carrera)
+        MAX_SAMPLES_PER_CARRERA = 500 
+
         for carr in carreras_light:
-            # Creamos copias locales y las borramos al final del bucle
             tit_sub = df_tit_light[df_tit_light['nomb_carrera'] == carr].copy()
             mot_sub = df_mot_light[df_mot_light['nomb_carrera'] == carr].copy()
             prep_sub = df_prep_light[df_prep_light['nomb_carrera'] == carr].copy()
 
             if not tit_sub.empty and not mot_sub.empty and not prep_sub.empty:
-                # Combinatoria
-                comb = tit_sub.merge(mot_sub, how="cross").merge(prep_sub, how="cross")
+                
+                # OPTIMIZACIÓN: Muestreamos la población de entrada para que el cruce sea pequeño
+                sample_n = min(MAX_SAMPLES_PER_CARRERA, len(tit_sub), len(mot_sub), len(prep_sub))
+                
+                # Si el tamaño es 0, ignoramos
+                if sample_n == 0:
+                    del tit_sub, mot_sub, prep_sub
+                    gc.collect() 
+                    continue
+                
+                # Muestreo con reemplazo si la población es menor
+                tit_sample = tit_sub.sample(n=sample_n, replace=(len(tit_sub) < sample_n), random_state=RANDOM_STATE)
+                mot_sample = mot_sub.sample(n=sample_n, replace=(len(mot_sub) < sample_n), random_state=RANDOM_STATE)
+                prep_sample = prep_sub.sample(n=sample_n, replace=(len(prep_sub) < sample_n), random_state=RANDOM_STATE)
+                
+                # Cruce de las muestras
+                comb = tit_sample.merge(mot_sample, how="cross").merge(prep_sample, how="cross")
                 comb['nomb_carrera'] = carr 
                 resultados.append(comb)
             
-            # LIBERACIÓN DE MEMORIA después de cada sub-combinatoria
             del tit_sub, mot_sub, prep_sub
             gc.collect() 
 
         # Concatenamos la lista final
         df_comb_light = pd.concat(resultados, ignore_index=True) if resultados else pd.DataFrame()
-        print(f"Combinatoria completada. Filas generadas: {len(df_comb_light)}")
+        print(f"Combinatoria Muestreada completada. Filas generadas: {len(df_comb_light)}")
         
-        # Limpiamos la lista de resultados y forzamos GC
         del resultados
         gc.collect() 
 
@@ -512,17 +527,27 @@ def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestr
             if carr == carrera_pesada:
                 # Comercial se trata aparte
                 df_t_hv = df_Titulados[df_Titulados['nomb_carrera'] == carrera_pesada].copy()
-                df_m_hv = df_Motivacion_est[df_Motivacion_est['nomb_carrera'] == carrera_pesada]
-                df_p_hv = df_Preparacion_est[df_Preparacion_est['nomb_carrera'] == carrera_pesada]
+                df_m_hv = df_Motivacion_est[df_Motivacion_est['nomb_carrera'] == carrera_pesada].drop(columns=['id_estudiante'], errors='ignore')
+                df_p_hv = df_Preparacion_est[df_Preparacion_est['nomb_carrera'] == carrera_pesada].drop(columns=['id_estudiante'], errors='ignore')
 
                 df_t_hv['duracion_real'] = df_t_hv['año_exacto_titulo'] - df_t_hv['año_exacto_ingreso']
                 df_t_hv['duracion_formal'] = df_t_hv['dur_total_carr']
                 df_t_hv = df_t_hv[['nomb_carrera', 'duracion_real', 'duracion_formal']]
+                
+                # Muestreo Comercial (usamos la misma técnica)
+                sample_n = min(MAX_SAMPLES_PER_CARRERA, len(df_t_hv), len(df_m_hv), len(df_p_hv))
+                
+                if not df_m_hv.empty and not df_p_hv.empty and sample_n > 0:
+                    tit_sample = df_t_hv.sample(n=sample_n, replace=(len(df_t_hv) < sample_n), random_state=RANDOM_STATE)
+                    mot_sample = df_m_hv.sample(n=sample_n, replace=(len(df_m_hv) < sample_n), random_state=RANDOM_STATE)
+                    prep_sample = df_p_hv.sample(n=sample_n, replace=(len(df_p_hv) < sample_n), random_state=RANDOM_STATE)
 
-                if not df_m_hv.empty and not df_p_hv.empty:
-                    df_to_plot = df_t_hv.merge(df_m_hv, how="cross").merge(df_p_hv, how="cross")
+                    df_to_plot = tit_sample.merge(mot_sample, how="cross").merge(prep_sample, how="cross")
                 else:
                     df_to_plot = pd.DataFrame()
+                
+                del tit_sample, mot_sample, prep_sample
+                gc.collect()
             else:
                 df_to_plot = df_comb_light[df_comb_light['nomb_carrera'] == carr]
 
