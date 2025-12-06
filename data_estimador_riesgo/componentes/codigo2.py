@@ -343,7 +343,7 @@ def Grafico_Carrera_Web(df):
 # FUNCIÓN MAESTRA CON LOS 3 MÉTODOS
 # =================================================================
 
-def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestra estratificada por criterio de Neyman"):
+def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestra estratificada por criterio de Neyman", max_filas_simuladas=2000):
     
     # 1. PREPARACIÓN
     df_Titulados = Filtrar_Titulados(df_tit)
