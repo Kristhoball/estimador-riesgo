@@ -1,7 +1,7 @@
-# 1. Imagen base
+# 1. Usamos una imagen base de Python oficial y ligera
 FROM python:3.11-slim
 
-# 2. Configuración
+# 2. Configuración de entorno
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
@@ -10,38 +10,39 @@ RUN apt-get update && apt-get install -y \
     curl unzip util-linux caddy \
     && rm -rf /var/lib/apt/lists/*
 
-# 4. Usuario seguro
+# 4. Crear directorio de trabajo y usuario no-root
 RUN useradd -m -u 1000 user
 USER user
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH
 WORKDIR $HOME/app
 
-# 5. Copiar archivos
+# 5. Copiar requisitos e instalar librerías
 COPY requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
+
+# 6. Copiar el código del proyecto
 COPY . .
 
-# 6. Limpiar permisos
+# 7. Limpiar permisos (Para evitar errores de reflex init)
 RUN rm -f .gitignore requirements.txt
 
-# 7. Inicializar
+# 8. Inicializar y Exportar el Frontend
 RUN reflex init
-
-# --- AQUÍ ESTÁ LA CLAVE DEL HTTPS ---
-# Le decimos a Reflex: "Tu dirección pública es HTTPS"
-ENV REFLEX_API_URL=https://estimador-riesgo.zeabur.app
-
-# 8. Construir la Web
 RUN reflex export --frontend-only --no-zip
 
-# 9. Configuración de Caddy (CORREGIDA PARA ACEPTAR CUALQUIER DOMINIO)
-# Usamos ":8080" en lugar de una IP específica. Esto permite que Zeabur entre.
-RUN echo ":8080 {\n\
-    # Desactivamos el auto-HTTPS de Caddy porque Zeabur ya lo hace afuera\n\
+# 9. URL Pública (HTTPS) para Reflex
+# Reemplaza esto con tu dominio real de Zeabur
+ENV REFLEX_API_URL=https://estimador-riesgo.zeabur.app
+
+# 10. Configuración de Caddy (CORREGIDA)
+# El bloque { auto_https off } va PRIMERO y separado.
+RUN echo "{\n\
     auto_https off\n\
-    \n\
+}\n\
+\n\
+:8080 {\n\
     handle /_event/* {\n\
         reverse_proxy 127.0.0.1:8000\n\
     }\n\
@@ -55,6 +56,5 @@ RUN echo ":8080 {\n\
     }\n\
 }" > Caddyfile
 
-# 10. Arranque FINAL
-# Quitamos flags innecesarios, la configuración ya está en el archivo Caddyfile
+# 11. Arranque FINAL
 CMD ["sh", "-c", "reflex run --env prod --backend-only --backend-port 8000 & caddy run --config Caddyfile --adapter caddyfile"]
