@@ -629,6 +629,7 @@ def content_resultados():
                     align_items="start"
                 ),
                 width="100%", spacing="4"
+            ),    
             rx.center(
                 rx.vstack(
                     rx.button("Click para generar alerta", on_click=State.generar_graficos, loading=State.procesando_graficos, variant="outline", color_scheme="gray", width="90%", height="3em", border="1px solid black"),
