@@ -1,7 +1,7 @@
-# 1. Usamos una imagen base de Python oficial y ligera
+# 1. Imagen base
 FROM python:3.11-slim
 
-# 2. Configuración de entorno
+# 2. Configuración
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
@@ -10,35 +10,35 @@ RUN apt-get update && apt-get install -y \
     curl unzip util-linux caddy \
     && rm -rf /var/lib/apt/lists/*
 
-# 4. Crear directorio de trabajo y usuario no-root
+# 4. Usuario seguro
 RUN useradd -m -u 1000 user
 USER user
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH
 WORKDIR $HOME/app
 
-# 5. Copiar requisitos e instalar librerías
+# 5. Copiar archivos
 COPY requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
-
-# 6. Copiar el código del proyecto
 COPY . .
 
-# 7. CORRECCIÓN CRÍTICA DE PERMISOS
-RUN rm -f .gitignore
-RUN rm -f requirements.txt
+# 6. Limpiar permisos
+RUN rm -f .gitignore requirements.txt
 
-# 8. Inicializar y Exportar el Frontend
+# 7. Inicializar
 RUN reflex init
-RUN reflex export --frontend-only --no-zip
 
-# --- SOLUCIÓN HTTPS/WEBSOCKET ---
-# 9. FORZAR LA URL PÚBLICA EN HTTPS. (¡REEMPLAZA ESTA URL CON LA TUYA DE ZEABUR!)
+# --- AQUÍ ESTÁ LA CLAVE DEL HTTPS ---
+# Le decimos a Reflex: "Tu dirección pública es HTTPS"
 ENV REFLEX_API_URL=https://estimador-riesgo.zeabur.app
 
-# 10. Configuración de Caddy (Frontend en 8080)
-RUN echo "0.0.0.0:8080 {\n\
+# 8. Construir la Web
+RUN reflex export --frontend-only --no-zip
+
+# 9. Configurar Caddy (MODO HTTP EXPLÍCITO)
+# Al poner "http://" antes de la IP, prohibimos que Caddy intente usar HTTPS.
+RUN echo "http://0.0.0.0:8080 {\n\
     handle /_event/* {\n\
         reverse_proxy 127.0.0.1:8000\n\
     }\n\
@@ -52,5 +52,5 @@ RUN echo "0.0.0.0:8080 {\n\
     }\n\
 }" > Caddyfile
 
-# 11. Arranque FINAL
+# 10. Arrancar (Sin flags raros)
 CMD ["sh", "-c", "reflex run --env prod --backend-only --backend-port 8000 & caddy run --config Caddyfile --adapter caddyfile"]
