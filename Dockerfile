@@ -1,54 +1,52 @@
-FROM python:3.11-slim
+# CAMBIO 1: Usamos la imagen COMPLETA (no slim) para asegurar compatibilidad
+FROM python:3.11
 
 # 1. Configuración básica y ROMPE-CACHÉ
-# Cambia este número si necesitas forzar una reconstrucción completa en el futuro
-ENV CACHE_BUST=20250228_1
+ENV CACHE_BUST=20250228_2
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# 2. Instalar herramientas del sistema
-# Usamos --no-install-recommends para mantenerlo ligero, pero aseguramos unzip
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# 2. Instalar Caddy y herramientas (incluyendo zip y unzip explícitamente)
+RUN apt-get update && apt-get install -y \
     curl \
     unzip \
+    zip \
     debian-keyring \
     debian-archive-keyring \
     apt-transport-https \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-# 3. VERIFICACIÓN (Esto fallará la build si unzip no se instaló, avisándonos antes)
-RUN which unzip && unzip -v | head -n 1
-
-# 4. Instalar Caddy (Servidor Web)
-RUN curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg \
+    && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg \
     && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list \
     && apt-get update && apt-get install -y caddy \
     && rm -rf /var/lib/apt/lists/*
 
-# 5. Crear usuario (Seguridad)
+# 3. Crear usuario
 RUN useradd -m -u 1000 user
 USER user
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH
 WORKDIR $HOME/app
 
-# 6. Instalar Dependencias Python
+# 4. VERIFICACIÓN CRÍTICA (Como usuario)
+# Si unzip no es accesible aquí, la construcción fallará inmediatamente
+RUN echo "Verificando unzip..." && which unzip && unzip -v | head -n 1
+
+# 5. Instalar Dependencias Python
 COPY --chown=user requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# 7. Copiar Código
+# 6. Copiar Código
 COPY --chown=user . .
 
-# 8. Asegurar permisos de ejecución
+# 7. Asegurar permisos de ejecución
+USER root
 RUN chmod +x start.sh
+USER user
 
-# 9. Construir Frontend (Reflex Export)
-# Ahora unzip está garantizado, así que esto no debería fallar
+# 8. Construir Frontend (Reflex Export)
 RUN reflex export --frontend-only --no-zip
 
-# 10. Configurar Caddy
+# 9. Configurar Caddy
 RUN echo "{\n\
     auto_https off\n\
 }\n\
@@ -68,5 +66,5 @@ RUN echo "{\n\
     }\n\
 }" > Caddyfile
 
-# 11. Comando de arranque
+# 10. Comando de arranque
 CMD ["bash", "./start.sh"]
