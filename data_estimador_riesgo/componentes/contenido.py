@@ -411,7 +411,7 @@ class State(rx.State):
                 df_prep.rename(columns={'Código Carrera Nacional': 'nomb_carrera'}, inplace=True)
 
             # Calcular
-            fig1, fig2 = Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion=self.tipo_simulacion)
+            fig1, fig2 = Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion=self.tipo_simulacion, max_filas_simuladas=self.max_filas_combinatoria)
             
             # Guardar Imágenes
             buf = io.BytesIO(); fig1.savefig(buf, format='png', bbox_inches='tight'); buf.seek(0)
