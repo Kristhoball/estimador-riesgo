@@ -18,5 +18,5 @@ config = rx.Config(
     
     # 2. Aumentamos el tiempo de espera del backend a 20 minutos.
     # Esto ayuda a que no se corte la conexión si el archivo tarda en procesarse.
-    timeout=1200,
+    timeout=1800,
 )
