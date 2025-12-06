@@ -303,8 +303,8 @@ class State(rx.State):
                 self.logs.append(f"Filtrando: {nombre}...")
                 yield
                 
-                # 2. Filtrar sin usar RAM (usando codigo.py)
-                filas = Filtrar_Archivo_En_Disco(tmp_in, tmp_out)
+                # --- AQUÍ ESTÁ LA CORRECCIÓN: Pasamos el valor de es_simulado ---
+                filas = Filtrar_Archivo_En_Disco(tmp_in, tmp_out, es_simulado=self.es_simulado)
                 
                 if filas > 0:
                     # Mover archivo filtrado a carpeta segura
@@ -506,6 +506,7 @@ def content_upload():
                 rx.hstack(
                     rx.text("Simulado:", font_weight="bold", font_size="0.9em"),
                     rx.radio_group(["Si", "No"], direction="row", on_change=State.set_es_simulado, value=State.es_simulado),
+                    rx.text(f"(Seleccionado: {State.es_simulado})", font_size="0.8em", color="blue"),
                     margin_bottom="1em", align_items="center"
                 ),
                 rx.upload(
