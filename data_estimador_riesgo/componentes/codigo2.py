@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 import gc # Garbage Collector para liberar memoria
+
 # Configuramos un estado aleatorio global para la reproducibilidad
 np.random.seed(42)
 RANDOM_STATE = 42
@@ -98,68 +99,68 @@ def Alerta_Preparacion(df_filtrado, r):
               resultados_pre.append({'nomb_carrera': i, 'IPA_i': IPA_i})
         return pd.DataFrame(resultados_pre)
 
-def Neyman_2poblaciones(df_Motivacion, df_Preparacion, carrera='nomb_carrera',
-                        variable_mot='P_j', variable_prep='PA_j',
-                        error=0.01, z=1.96):
-
-    filas = []
-    for c in df_Motivacion[carrera].unique():
-        gm = df_Motivacion[df_Motivacion[carrera] == c]
-        gp = df_Preparacion[df_Preparacion[carrera] == c]
-
-        if gm.empty or gp.empty:
-            continue
-
-        N_comb = min(len(gm), len(gp))
-
-        # Calcular SD robusto
-        S_m = gm[variable_mot].std(ddof=1)
-        S_p = gp[variable_prep].std(ddof=1)
+def Neyman_2poblaciones(df_Motivacion, df_Preparacion, carrera='nomb_carrera', variable_mot='P_j', variable_prep='PA_j', error=0.01, z=1.96):
+    filas=[]
+    for i in df_Motivacion[carrera].unique():
+        grupo_m = df_Motivacion[df_Motivacion[carrera]==i]
+        grupo_p = df_Preparacion[df_Preparacion[carrera]==i]
+        if grupo_m.empty or grupo_p.empty: continue
+        
+        N_m = len(grupo_m)
+        N_p = len(grupo_p)
+        N_comb = min(N_m, N_p)
+        
+        S_m = grupo_m[variable_mot].std(ddof=1).fillna(0)
+        S_p = grupo_p[variable_prep].std(ddof=1).fillna(0)
+        
         S_comb = np.nanmean([S_m, S_p])
-
-        if np.isnan(S_comb) or S_comb == 0:
-            S_comb = 1.0  # valor mínimo para no caer en n = 0
-
-        filas.append([c, N_comb, S_comb])
-
-    if not filas:
-        return 10, {}  # mínimo de seguridad
-
-    dfN = pd.DataFrame(filas, columns=['carrera', 'N_comb', 'S_comb'])
-    Nh = dfN.set_index('carrera')['N_comb']
-    Sh = dfN.set_index('carrera')['S_comb']
-
-    N = Nh.sum()
-    sum_ShNh = (Sh * Nh).sum()
-    sum_Sh2Nh = (Sh**2 * Nh).sum()
-
-    numerador = (z**2) * (sum_ShNh**2)
-    D = (error**2) / (z**2)
-    denominador = (N**2 * D) + sum_Sh2Nh
-
-    if denominador == 0:
-        denominador = 1
-
-    n = numerador / denominador
-    n = max(10, min(int(n), int(N)))  # nunca permitir n = 0
-
-    nh = (n * Nh * Sh / sum_ShNh).round().astype(int)
+        S_comb = 0.0 if np.isnan(S_comb) else S_comb
+        
+        filas.append([i, N_comb, S_comb])
     
-    # Asegurar que ninguna carrera quede con nh = 0
-    nh[nh == 0] = 1
-
-    # Ajustar suma
-    diferencia = n - nh.sum()
-    if diferencia != 0:
-        nh.iloc[-1] += diferencia
-
-    return n, nh.to_dict()
-
+    if not filas: 
+        return 0, {}
+    
+    dfN = pd.DataFrame(filas, columns=['carrera', 'N_comb', 'S_comb'])
+    
+    Nh = dfN.set_index('carrera')['N_comb'].astype(float)
+    Sh = dfN.set_index('carrera')['S_comb'].astype(float).fillna(0) 
+    
+    N = Nh.sum()
+    
+    sum_ShNh = Sh.mul(Nh).sum()
+    sum_Sh2Nh = (Sh**2).mul(Nh).sum()
+    
+    numerador = (z**2) * ( sum_ShNh**2 )
+    D = (error**2) /(z**2)
+    denominador = (N**2 * D) + sum_Sh2Nh
+    
+    if denominador == 0 or sum_ShNh == 0: 
+        return 0, {}
+        
+    n = numerador / denominador
+    n = min(n, N) 
+    
+    nh_numerador = n * Nh * Sh
+    nh_denominador = sum_ShNh
+    
+    if nh_denominador == 0:
+        return 0, {}
+        
+    nh = nh_numerador / nh_denominador
+    
+    nh = nh.round().astype(int)
+    
+    diferencia = int(round(n)) - nh.sum()
+    
+    if diferencia != 0 and not nh.empty:
+        ultima = nh.index[-1]
+        nh.loc[ultima] += diferencia
+        
+    return int(round(n)), nh.to_dict()
 
 def Ejemplo_neyman(df_solo_mot, df_solo_pre, nh_dicc):
     bloque = []
-    
-    # Lista de variables que necesitamos de las fuentes
     vars_mot = ['nomb_carrera', 'r_j', 'P_j'] 
     vars_prep = ['nomb_carrera', 'PA_j'] 
     
@@ -171,21 +172,16 @@ def Ejemplo_neyman(df_solo_mot, df_solo_pre, nh_dicc):
         
         if gm.empty or gp.empty: continue
         
-        # Muestreo seguro
         replace_m = len(gm) < nh
         replace_p = len(gp) < nh
 
         try:
-            # Seleccionamos solo las variables necesarias para el muestreo
             m = gm[vars_mot].sample(n=nh, replace=replace_m, random_state=RANDOM_STATE).reset_index(drop=True)
             g = gp[vars_prep].sample(n=nh, replace=replace_p, random_state=RANDOM_STATE).reset_index(drop=True)
         except ValueError as e:
-             print(f"Advertencia de muestreo para {carr}: {e}")
              continue
              
-        # Concatenación para formar la simulación
         g['nomb_carrera'] = carr
-        
         m.index = range(len(m))
         g.index = range(len(g))
         
@@ -196,27 +192,11 @@ def Ejemplo_neyman(df_solo_mot, df_solo_pre, nh_dicc):
     
     bloques = pd.concat(bloque, ignore_index=True) if bloque else pd.DataFrame()
     
-    # Renombramos y limpiamos columnas para que coincidan con df_real
     if not bloques.empty:
-        bloques = bloques.rename(columns={
-            'P_j_mot': 'P_j',
-            'PA_j_prep': 'PA_j',
-            'r_j_mot': 'r_j'
-        })
-        
-        # Eliminamos sufijos sobrantes (nomb_carrera_mot/prep y columnas de datos duplicadas)
-        bloques = bloques.drop(columns=[
-            'nomb_carrera_mot', 
-            'nomb_carrera_prep', 
-            'P_j_prep', 
-            'PA_j_mot', 
-            'r_j_prep' 
-        ], errors='ignore')
-        
-        # Creamos 'id_simulado' y reordenamos
+        bloques = bloques.rename(columns={'P_j_mot': 'P_j', 'PA_j_prep': 'PA_j', 'r_j_mot': 'r_j'})
+        bloques = bloques.drop(columns=['nomb_carrera_mot', 'nomb_carrera_prep', 'P_j_prep', 'PA_j_mot', 'r_j_prep'], errors='ignore')
         bloques['id_simulado'] = range(1,len(bloques)+1)
         
-    # Devolvemos el DataFrame con el ID de simulación
     return bloques[['id_simulado', 'nomb_carrera','r_j', 'P_j', 'PA_j', 'fuente']]
 
 def etiquetar_alerta_desde_prob(R):
@@ -224,35 +204,34 @@ def etiquetar_alerta_desde_prob(R):
     if -0.03 <= R <= 0.03: return "Amarilla"
     return "Verde"
 
+# --- AQUI ESTA TU FUNCIÓN RESTAURADA (Alerta_Estudiantes) ---
 def Alerta_Estudiantes(df, df_Titulados_car, permitir_incompletos=False):
     df_final_est = df.copy()
     
-    # 1. Normalización de ID (si viene de Ejemplo_neyman)
+    # 1. Normalización de ID
     if 'id_simulado' in df_final_est.columns:
         df_final_est = df_final_est.rename(columns={'id_simulado': 'id_estudiante'})
     
-    # 2. Aseguramos las columnas de datos
+    # 2. Aseguramos columnas
     required_cols = ['id_estudiante', 'nomb_carrera', 'r_j', 'P_j', 'PA_j','fuente']
     for col in required_cols:
         if col not in df_final_est.columns:
-            if col in ['r_j', 'P_j', 'PA_j']:
-                df_final_est[col] = np.nan
-            else:
-                raise ValueError(f"Error en Alerta_Estudiantes: Falta la columna clave '{col}'. Columnas: {df_final_est.columns.tolist()}")
+             if col in ['r_j', 'P_j', 'PA_j']:
+                 df_final_est[col] = np.nan
+             else:
+                 raise ValueError(f"Error en Alerta_Estudiantes: Falta columna '{col}'")
 
     # 3. Tipos numéricos
     df_final_est['r_j'] = df_final_est['r_j'].astype(float)
     df_final_est['P_j'] = df_final_est['P_j'].astype(float)
     df_final_est['PA_j'] = df_final_est['PA_j'].astype(float)
 
-    # ❗ Manejo de faltantes
+    # ❗ Manejo de faltantes (RESTITUIDO)
     if not permitir_incompletos:
-        # Para Neyman / Combinatoria: solo casos con las 3 variables
+        # Para Neyman / Combinatoria: solo casos completos
         df_final_est = df_final_est.dropna(subset=['r_j','P_j','PA_j'], how='any')
         if df_final_est.empty:
-            # devolver DF vacío con columnas esperadas
-            return pd.DataFrame(columns=['id_estudiante','fuente','nomb_carrera',
-                                         'S_j','L_j','P_j','PA_j','R_j','Alerta'])
+            return pd.DataFrame(columns=['id_estudiante','fuente','nomb_carrera','S_j','L_j','P_j','PA_j','R_j','Alerta'])
     else:
         # Para Eliminación: rellenar faltantes con 0
         df_final_est[['r_j','P_j','PA_j']] = df_final_est[['r_j','P_j','PA_j']].fillna(0)
@@ -260,14 +239,12 @@ def Alerta_Estudiantes(df, df_Titulados_car, permitir_incompletos=False):
     a = 1
     df_final_est['S_j'] = a * df_final_est['r_j']
     
-    # 4. Merge con datos de Titulados
     df_final_est = df_final_est.merge(df_Titulados_car[['nomb_carrera', 'B_i']], on='nomb_carrera', how='left')
-    
     df_final_est['L_j'] = df_final_est['B_i'].fillna(0)
+    
     alpha = 0.6
     beta = 0.4
     
-    # 5. Cálculo final del riesgo (R_j)
     df_final_est['R_j'] = alpha * (df_final_est['S_j'] - df_final_est['L_j']) + \
                           beta * (df_final_est['P_j'] + df_final_est['PA_j'])
     
@@ -281,12 +258,9 @@ def Alerta_Carrera(df):
     beta = 0.4
     df_completo_carr = df.copy()
     df_completo_carr['R_i'] = alpha *(df_completo_carr['AP_i'] - df_completo_carr['B_i']) + beta* (df_completo_carr['P_i'] + df_completo_carr['IPA_i'] ) 
-    
     if "Alerta" not in df_completo_carr.columns:
         df_completo_carr["Alerta"] = df_completo_carr["R_i"].apply(etiquetar_alerta_desde_prob)
     return df_completo_carr
-
-# --- FUNCIONES DE GRÁFICOS PARA WEB (Sin cambios) ---
 
 def Grafico_Estudiantes_Web(df):
     alerta_palette = {"Verde": "#2ca02c", "Amarilla": "#fffb00", "Roja": "#ff0000"}
@@ -317,54 +291,51 @@ def Grafico_Estudiantes_Web(df):
     
     for j in range(i + 1, len(axes)):
         axes[j].axis('off')
-
     plt.tight_layout()
     return fig 
 
 def Grafico_Carrera_Web(df):
     alerta_palette = {"Verde": "#2ca02c", "Amarilla": "#fffb00", "Roja": "#ff0000"}
-    
     fig = plt.figure(figsize=(10, 6))
     if not df.empty:
-        g = sns.barplot(
-            data=df, x='nomb_carrera', y='R_i', hue='Alerta',
-            palette=alerta_palette, dodge=False
-        )
+        g = sns.barplot(data=df, x='nomb_carrera', y='R_i', hue='Alerta', palette=alerta_palette, dodge=False)
         plt.title("Riesgo promedio por carrera", fontsize=16)
         plt.xticks(rotation=45, ha='right')
     else:
         plt.text(0.5, 0.5, "No hay datos para graficar", ha='center')
-        
     plt.tight_layout()
     return fig
 
 # =================================================================
-# FUNCIÓN MAESTRA CON LOS 3 MÉTODOS
+# FUNCIÓN MAESTRA (Estructura Corregida)
 # =================================================================
 
-def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestra estratificada por criterio de Neyman", max_filas_simuladas=2000):
+def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestra estratificada por criterio de Neyman", max_filas_simuladas="2000"):
     
+    try:
+        MAX_FILAS_CARRERA = int(max_filas_simuladas)
+    except:
+        MAX_FILAS_CARRERA = 2000
+
     # 1. PREPARACIÓN
     df_Titulados = Filtrar_Titulados(df_tit)
     df_Motivacion = Filtrar_Motivacion(df_mot)
     df_Preparacion = Filtrar_Preparacion(df_prep)
 
     df_Titulados_car = Alerta_Titulados(df_Titulados)
-
     df_Motivacion_car = Alerta_Motivacion(df_Motivacion, 'carrera')
     df_Motivacion_est = Alerta_Motivacion(df_Motivacion, 'estudiante')
-
     df_Preparacion_car = Alerta_Preparacion(df_Preparacion, 'carrera')
     df_Preparacion_est = Alerta_Preparacion(df_Preparacion, 'estudiante')  
 
-    # 2. GRÁFICO CARRERA (Siempre se genera)
+    # 2. GRÁFICO CARRERA
     df_merge = pd.merge(df_Titulados_car, df_Motivacion_car, on='nomb_carrera')
     df_final_carr = pd.merge(df_merge, df_Preparacion_car, on='nomb_carrera')
     df_final_carr = Alerta_Carrera(df_final_carr)
     fig_carrera = Grafico_Carrera_Web(df_final_carr)
     fig_estudiantes = None
 
-    # 3. PREPARACIÓN DE CONJUNTOS (Estudiantes)
+    # 3. CONJUNTOS ESTUDIANTES
     ids_mot = set(df_Motivacion_est['id_estudiante'])
     ids_pre = set(df_Preparacion_est['id_estudiante'])
     ids_comunes = ids_mot.intersection(ids_pre)
@@ -374,7 +345,6 @@ def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestr
     df_solo_mot = df_Motivacion_est[df_Motivacion_est['id_estudiante'].isin(ids_solo_mot)].copy()
     df_solo_pre = df_Preparacion_est[df_Preparacion_est['id_estudiante'].isin(ids_solo_pre)].copy()
     
-    # Rellenar con NaN las columnas faltantes para que la concatenación sea segura
     df_solo_mot['PA_j'] = np.nan
     df_solo_mot['fuente'] = 'solo_mot'
     
@@ -382,15 +352,14 @@ def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestr
     df_solo_pre['P_j'] = np.nan
     df_solo_pre['fuente'] = 'solo_prep'
 
-    # Intersección real (df_real)
     df_real = df_Motivacion_est[df_Motivacion_est['id_estudiante'].isin(ids_comunes)].merge(
         df_Preparacion_est[df_Preparacion_est['id_estudiante'].isin(ids_comunes)], 
         on=['id_estudiante', 'nomb_carrera'], how='inner'
     )
     df_real['fuente'] = 'no_simulado'
 
-    # --- SELECCIÓN DEL ALGORITMO ---
-    
+    # --- SIMULACIONES ---
+
     if tipo_simulacion == "Muestra estratificada por criterio de Neyman":
         # === NEYMAN ===
         n, nh = Neyman_2poblaciones(df_solo_mot, df_solo_pre, carrera='nomb_carrera', variable_mot='P_j', variable_prep='PA_j', error=0.01, z=1.96)
@@ -400,7 +369,6 @@ def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestr
         else:
             df_simulacion_neyman = pd.DataFrame()
             
-        # Unir reales + simulados
         if not df_real.empty:
             df_real['id_estudiante'] = df_real['id_estudiante'].astype(str)
             max_id_real = pd.to_numeric(df_real['id_estudiante'], errors='coerce').max()
@@ -408,32 +376,22 @@ def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestr
         else:
             max_id_real = 0
 
-        # Renombrar id_simulado a id_estudiante
         df_simulacion_neyman.rename(columns={'id_simulado': 'id_estudiante'}, inplace=True)
-        # Ajuste de IDs para simulación
         if not df_simulacion_neyman.empty:
             df_simulacion_neyman['id_estudiante'] = [str(i) for i in range(int(max_id_real)+1, int(max_id_real)+1 + len(df_simulacion_neyman))]
         
-        # FIX: Concatenar REALES + SIMULADOS
         df_final_est = pd.concat([df_real, df_simulacion_neyman], ignore_index=True)
-        
-        df_final_est = Alerta_Estudiantes(df_final_est, df_Titulados_car)
+        df_final_est = Alerta_Estudiantes(df_final_est, df_Titulados_car, permitir_incompletos=False)
         fig_estudiantes = Grafico_Estudiantes_Web(df_final_est)
 
-# Dentro de la función Calcular_Resultados_Finales:
-
     elif tipo_simulacion == "Combinatoria":
-        # ===========================================================
-        # COMBINATORIA LIGERA PARA WEB: Procesamiento por carrera
-        # ===========================================================
+        # === COMBINATORIA OPTIMIZADA ===
         carrera_pesada = 'INGENIERIA COMERCIAL'
         carreras = df_Motivacion_est['nomb_carrera'].unique()
-
-        # Quitamos id_estudiante para no confundir con simulados
+        
         df_mot_est_combinatoria = df_Motivacion_est.drop(columns=['id_estudiante'], errors='ignore')
         df_prep_est_combinatoria = df_Preparacion_est.drop(columns=['id_estudiante'], errors='ignore')
 
-        # Filtrar carreras “livianas”
         df_mot_light = df_mot_est_combinatoria[df_mot_est_combinatoria['nomb_carrera'] != carrera_pesada]
         df_prep_light = df_prep_est_combinatoria[df_prep_est_combinatoria['nomb_carrera'] != carrera_pesada]
         df_tit_light = df_Titulados[df_Titulados['nomb_carrera'] != carrera_pesada].copy()
@@ -442,117 +400,82 @@ def Calcular_Resultados_Finales(df_tit, df_mot, df_prep, tipo_simulacion="Muestr
         df_tit_light['duracion_formal'] = df_tit_light['dur_total_carr']
         df_tit_light = df_tit_light[['nomb_carrera', 'duracion_real', 'duracion_formal']]
 
-        # Lista de carreras a graficar
-        lista_carreras_graficar = list(df_tit_light['nomb_carrera'].unique())
-        if carrera_pesada in carreras:
-            lista_carreras_graficar.append(carrera_pesada)
+        lista_carreras = list(df_tit_light['nomb_carrera'].unique())
+        if carrera_pesada in carreras: lista_carreras.append(carrera_pesada)
 
-        if not lista_carreras_graficar:
+        if not lista_carreras:
             fig_estudiantes = plt.figure()
             plt.text(0.5, 0.5, "Sin datos para Combinatoria", ha='center')
             return fig_carrera, fig_estudiantes
 
-        filas = max(1, math.ceil(len(lista_carreras_graficar) / 2))
+        filas = max(1, math.ceil(len(lista_carreras) / 2))
         fig_estudiantes, axes = plt.subplots(filas, 2, figsize=(12, 4 * filas), squeeze=False)
         axes = axes.flatten()
-
         alerta_palette = {"Verde": "#2ca02c", "Amarilla": "#fffb00", "Roja": "#ff0000"}
         orden_alertas = ["Roja", "Amarilla", "Verde"]
 
-        # Límite de filas a simular por carrera (Tu límite propuesto)
-        MAX_FILAS_CARRERA = int(max_filas_simuladas)
-
-        # --- BUCLE PRINCIPAL DE PROCESAMIENTO (POR CARRERA) ---
-        for i, carr in enumerate(lista_carreras_graficar):
+        for i, carr in enumerate(lista_carreras):
             ax = axes[i] if i < len(axes) else None
-            if ax is None:
-                break
-                
-            # Inicializamos df_to_plot por si el if/else falla
-            df_to_plot = pd.DataFrame() 
+            if ax is None: break
+            
+            df_to_plot = pd.DataFrame()
 
             if carr == carrera_pesada:
-                # Tratamiento para INGENIERIA COMERCIAL (Usando df_Titulados original)
-                df_t_sub = df_Titulados[df_Titulados['nomb_carrera'] == carrera_pesada].copy()
-                df_m_sub = df_mot_est_combinatoria[df_mot_est_combinatoria['nomb_carrera'] == carrera_pesada]
-                df_p_sub = df_prep_est_combinatoria[df_prep_est_combinatoria['nomb_carrera'] == carrera_pesada]
-
-                df_t_sub['duracion_real'] = df_t_sub['año_exacto_titulo'] - df_t_sub['año_exacto_ingreso']
-                df_t_sub['duracion_formal'] = df_t_sub['dur_total_carr']
-                df_t_sub = df_t_sub[['nomb_carrera', 'duracion_real', 'duracion_formal']]
+                df_t = df_Titulados[df_Titulados['nomb_carrera'] == carrera_pesada].copy()
+                df_m = df_mot_est_combinatoria[df_mot_est_combinatoria['nomb_carrera'] == carrera_pesada]
+                df_p = df_prep_est_combinatoria[df_prep_est_combinatoria['nomb_carrera'] == carrera_pesada]
+                df_t['duracion_real'] = df_t['año_exacto_titulo'] - df_t['año_exacto_ingreso']
+                df_t['duracion_formal'] = df_t['dur_total_carr']
+                df_t = df_t[['nomb_carrera', 'duracion_real', 'duracion_formal']]
             else:
-                # Tratamiento para carreras "livianas" (Usando df_tit_light)
-                df_t_sub = df_tit_light[df_tit_light['nomb_carrera'] == carr].copy()
-                df_m_sub = df_mot_light[df_mot_light['nomb_carrera'] == carr].copy()
-                df_p_sub = df_prep_light[df_prep_light['nomb_carrera'] == carr].copy()
-            
-            # --- LÓGICA DE MUESTREO Y CRUCE (Unificada) ---
-            if not df_t_sub.empty and not df_m_sub.empty and not df_p_sub.empty:
-                sample_n = min(MAX_FILAS_CARRERA, len(df_t_sub), len(df_m_sub), len(df_p_sub))
+                df_t = df_tit_light[df_tit_light['nomb_carrera'] == carr].copy()
+                df_m = df_mot_light[df_mot_light['nomb_carrera'] == carr].copy()
+                df_p = df_prep_light[df_prep_light['nomb_carrera'] == carr].copy()
 
+            if not df_t.empty and not df_m.empty and not df_p.empty:
+                sample_n = min(MAX_FILAS_CARRERA, len(df_t), len(df_m), len(df_p))
                 if sample_n > 0:
-                    # FIX: Asegurar que el muestreo use el RANDOM_STATE
-                    tit_sample = df_t_sub.sample(n=sample_n, replace=(len(df_t_sub) < sample_n),
-                                                 random_state=RANDOM_STATE).reset_index(drop=True)
-                    mot_sample = df_m_sub.sample(n=sample_n, replace=(len(df_m_sub) < sample_n),
-                                                 random_state=RANDOM_STATE).reset_index(drop=True)
-                    prep_sample = df_p_sub.sample(n=sample_n, replace=(len(df_p_sub) < sample_n),
-                                                 random_state=RANDOM_STATE).reset_index(drop=True)
-
-                    # Unión Paralela (No Producto Cruzado gigante)
-                    df_to_plot = pd.concat(
-                        [tit_sample,
-                         mot_sample.drop(columns=['nomb_carrera']),
-                         prep_sample.drop(columns=['nomb_carrera'])],
-                        axis=1
-                    )
+                    ts = df_t.sample(n=sample_n, replace=(len(df_t)<sample_n), random_state=RANDOM_STATE).reset_index(drop=True)
+                    ms = df_m.sample(n=sample_n, replace=(len(df_m)<sample_n), random_state=RANDOM_STATE).reset_index(drop=True)
+                    ps = df_p.sample(n=sample_n, replace=(len(df_p)<sample_n), random_state=RANDOM_STATE).reset_index(drop=True)
+                    
+                    df_to_plot = pd.concat([ts, ms.drop(columns=['nomb_carrera']), ps.drop(columns=['nomb_carrera'])], axis=1)
                     df_to_plot['nomb_carrera'] = carr
                     df_to_plot['fuente'] = 'combinatoria'
-                    # Aseguramos ID como string para consistencia con df_real
-                    df_to_plot['id_estudiante'] = [str(x) for x in range(1, len(df_to_plot) + 1)]
-                
-            # --- GRAFICAR Y LIMPIAR ---
+                    df_to_plot['id_estudiante'] = [str(x) for x in range(1, len(df_to_plot)+1)]
+
             if not df_to_plot.empty:
-                df_alerta_carr = Alerta_Estudiantes(df_to_plot, df_Titulados_car)
-                sns.histplot(
-                    data=df_alerta_carr, x='R_j', bins=20, hue='Alerta',
-                    multiple="stack", palette=alerta_palette, hue_order=orden_alertas, ax=ax
-                )
+                df_res_carr = Alerta_Estudiantes(df_to_plot, df_Titulados_car, permitir_incompletos=False)
+                sns.histplot(data=df_res_carr, x='R_j', bins=20, hue='Alerta', multiple="stack", palette=alerta_palette, hue_order=orden_alertas, ax=ax)
                 ax.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
-                del df_alerta_carr
+                del df_res_carr
             else:
                 ax.text(0.5, 0.5, "Sin datos", ha='center')
 
             ax.set_title(f'R_j: {carr}', fontsize=10)
             ax.set_xlabel('')
-            
-            # Limpiar DataFrames temporales para esta carrera
-            del df_t_sub, df_m_sub, df_p_sub, df_to_plot 
+            del df_to_plot
             gc.collect()
 
-        # Apagar ejes sobrantes
-        for j in range(i + 1, len(axes)):
-            axes[j].axis('off')
-
+        for j in range(i + 1, len(axes)): axes[j].axis('off')
         plt.tight_layout()
 
     elif tipo_simulacion == "Eliminación":
-    # === ELIMINACIÓN: usar TODOS los estudiantes sin simulación ===
-    # - df_real: tienen motivación y preparación
-    # - df_solo_mot: solo motivación
-    # - df_solo_pre: solo preparación
-    
-        df_elim_completo = pd.concat(
-            [df_real, df_solo_mot, df_solo_pre],
-            ignore_index=True
-        )
+        # === ELIMINACIÓN ===
+        df_elim_completo = pd.concat([df_real, df_solo_mot, df_solo_pre], ignore_index=True)
+        # Limpieza básica para asegurar que haya ALGO
+        df_elim_completo = df_elim_completo.dropna(subset=['r_j', 'P_j', 'PA_j'], how='all')
 
         if not df_elim_completo.empty:
-        # Aquí permitimos incompletos (rellena NaN con 0 dentro de la función)
-            df_final_elim = Alerta_Estudiantes(df_elim_completo.copy(), df_Titulados_car,
-                                           permitir_incompletos=True)
+            # Aquí es donde usamos tu parámetro especial: permitir_incompletos=True
+            df_final_elim = Alerta_Estudiantes(df_elim_completo.copy(), df_Titulados_car, permitir_incompletos=True)
             fig_estudiantes = Grafico_Estudiantes_Web(df_final_elim)
         else:
             fig_estudiantes = plt.figure()
             plt.text(0.5, 0.5, "No hay datos para el análisis por Eliminación", ha='center')
+
+    else:
+        fig_estudiantes = plt.figure()
+        plt.text(0.5, 0.5, "Algoritmo desconocido", ha='center')
+
     return fig_carrera, fig_estudiantes
