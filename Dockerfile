@@ -36,9 +36,12 @@ ENV REFLEX_API_URL=https://estimador-riesgo.zeabur.app
 # 8. Construir la Web
 RUN reflex export --frontend-only --no-zip
 
-# 9. Configurar Caddy (MODO HTTP EXPLÍCITO)
-# Al poner "http://" antes de la IP, prohibimos que Caddy intente usar HTTPS.
-RUN echo "http://0.0.0.0:8080 {\n\
+# 9. Configuración de Caddy (CORREGIDA PARA ACEPTAR CUALQUIER DOMINIO)
+# Usamos ":8080" en lugar de una IP específica. Esto permite que Zeabur entre.
+RUN echo ":8080 {\n\
+    # Desactivamos el auto-HTTPS de Caddy porque Zeabur ya lo hace afuera\n\
+    auto_https off\n\
+    \n\
     handle /_event/* {\n\
         reverse_proxy 127.0.0.1:8000\n\
     }\n\
@@ -52,5 +55,6 @@ RUN echo "http://0.0.0.0:8080 {\n\
     }\n\
 }" > Caddyfile
 
-# 10. Arrancar (Sin flags raros)
+# 10. Arranque FINAL
+# Quitamos flags innecesarios, la configuración ya está en el archivo Caddyfile
 CMD ["sh", "-c", "reflex run --env prod --backend-only --backend-port 8000 & caddy run --config Caddyfile --adapter caddyfile"]
