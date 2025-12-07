@@ -388,6 +388,15 @@ class State(rx.State):
 # ==========================================
 # INTERFAZ VISUAL
 # ==========================================
+# Estilos Minimalistas y Limpios
+style_card_modern = {
+    "bg": "white",
+    "padding": "2em",
+    "border_radius": "lg",
+    "box_shadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+    "width": "100%",
+    "border": "1px solid #e2e8f0" # Borde sutil gris claro
+}
 style_border_box = {"border": "1px solid black", "padding": "1.5em", "border_radius": "md", "bg": "white", "width": "100%"}
 
 def row_archivo_simple(nombre_archivo: str, index: int):
@@ -678,9 +687,9 @@ def content_resultados():
                 rx.vstack(rx.text("Generar resultados con:", font_weight="bold"), rx.scroll_area(rx.radio_group(items=State.solo_archivo_titulados, direction="column", on_change=State.seleccionar_archivo, value=State.seleccionado), height="60px"), width="50%"),
                 rx.divider(orientation="vertical", height="60px", border_color="black"),
                 rx.vstack(
-                    rx.text("Tipo de simulación:", font_weight="bold"), 
-                    rx.radio_group(["Muestra estratificada por criterio de Neyman", "Combinatoria", "Eliminación"], direction="column", on_change=State.set_tipo_simulacion, value=State.tipo_simulacion), 
-                    
+                    rx.text("Tipo de simulación:", font_weight="bold"),
+                    rx.radio_group(["Muestra estratificada por criterio de Neyman", "Combinatoria", "Eliminación"], direction="column", on_change=State.set_tipo_simulacion, value=State.tipo_simulacion),
+
                     rx.cond(
                         State.tipo_simulacion == "Combinatoria",
                         rx.vstack(
@@ -702,7 +711,7 @@ def content_resultados():
                             width="100%"
                         )
                     ),
-                    
+
                     width="40%",
                     align_items="start"
                 ),
@@ -741,7 +750,7 @@ def content_historial():
                         rx.text(registro["detalle"], font_size="xs", color="gray"),
                         align_items="start", spacing="1"
                     ),
-                    rx.spacer(), 
+                    rx.spacer(),
                     rx.icon_button(rx.icon("download"), on_click=lambda: State.descargar_simulacion(index), color_scheme="green", variant="ghost", size="2"),
                     rx.icon_button(rx.icon("trash-2"), on_click=lambda: State.eliminar_registro_historial(index), color_scheme="red", variant="ghost", size="2"),
                     width="100%", align_items="center"
@@ -749,11 +758,11 @@ def content_historial():
                 border="1px solid #e2e8f0", padding="10px", border_radius="8px", width="100%", background_color="white", shadow="sm", margin_bottom="8px"
             )
         ),
-        height="100%", overflow_y="auto", padding_right="5px" 
+        height="100%", overflow_y="auto", padding_right="5px"
     )
 
 def contenido() -> rx.Component:
-    
+
     # 1. PIEZAS
     vista_acceso_restringido = rx.center(
         rx.vstack(
@@ -773,20 +782,20 @@ def contenido() -> rx.Component:
             rx.cond(
                 State.vista_actual == "upload",
                 content_upload(),
-                content_inicio() 
+                content_inicio()
             )
         )
     )
 
     # 2. BARRA SUPERIOR
     barra_superior = rx.hstack(
-        rx.spacer(), 
+        rx.spacer(),
         rx.cond(
             State.esta_logueado,
             rx.hstack(
                 rx.badge(f"👤 {State.usuario_actual}", color_scheme="green", variant="solid", padding="0.8em"),
                 rx.button("Usuario", on_click=lambda: State.set_show_perfil(True), variant="outline", size="2", color_scheme="blue"),
-                perfil_modal(), 
+                perfil_modal(),
                 rx.button("Cerrar Sesión", on_click=State.cerrar_sesion, color_scheme="red", size="2"),
                 spacing="3"
             ),
@@ -795,7 +804,7 @@ def contenido() -> rx.Component:
                 login_modal()
             )
         ),
-        width="100%", padding="1.5em", border_bottom="1px solid #e2e8f0"
+        width="100%", padding="1.5em", border_bottom="1px solid #e2e8f0", bg="white"
     )
 
     return rx.box(
@@ -809,6 +818,6 @@ def contenido() -> rx.Component:
             ),
             width="100%"
         ),
-        on_mount=State.check_session, 
-        width="100%", height="100vh", overflow="auto", background_color="white"
+        on_mount=State.check_session,
+        width="100%", height="100vh", overflow="auto", background_color="gray.50" # Fondo general suave
     )
