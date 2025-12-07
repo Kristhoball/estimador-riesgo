@@ -386,35 +386,47 @@ class State(rx.State):
         self.procesando_graficos = False
 
 # ==========================================
-# INTERFAZ VISUAL
+# INTERFAZ VISUAL (MODERNIZADA Y MINIMALISTA)
 # ==========================================
-# Estilos Minimalistas y Limpios
+
+# Estilos base
 style_card_modern = {
     "bg": "white",
     "padding": "2em",
-    "border_radius": "lg",
-    "box_shadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+    "border_radius": "xl",
+    "box_shadow": "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
     "width": "100%",
-    "border": "1px solid #e2e8f0" # Borde sutil gris claro
+    "border": "1px solid #f0f0f0",
+    "transition": "all 0.2s ease-in-out",
+    "_hover": {"box_shadow": "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"}
 }
-style_border_box = {"border": "1px solid black", "padding": "1.5em", "border_radius": "md", "bg": "white", "width": "100%"}
+
+style_input_box = {
+    "border": "2px dashed #e2e8f0",
+    "padding": "2em",
+    "border_radius": "lg",
+    "background_color": "gray.50",
+    "cursor": "pointer",
+    "_hover": {"border_color": "teal.400", "bg": "teal.50"}
+}
 
 def row_archivo_simple(nombre_archivo: str, index: int):
     return rx.hstack(
-        rx.text(f"{index + 1}.", font_weight="bold", color="gray", font_size="0.9em"),
-        rx.text(nombre_archivo, font_weight=rx.cond(State.seleccionado == nombre_archivo, "bold", "normal"), color=rx.cond(State.seleccionado == nombre_archivo, "teal", "black"), font_size="0.9em", is_truncated=True),
+        rx.badge(f"{index + 1}", color_scheme="gray", variant="solid", border_radius="full"),
+        rx.text(nombre_archivo, font_weight=rx.cond(State.seleccionado == nombre_archivo, "bold", "normal"), color=rx.cond(State.seleccionado == nombre_archivo, "teal.600", "gray.700"), font_size="0.9em", is_truncated=True),
         rx.spacer(),
         rx.hstack(
-            rx.icon(tag="arrow-up", size=14, cursor="pointer", on_click=lambda: State.mover_arriba(nombre_archivo)),
-            rx.icon(tag="arrow-down", size=14, cursor="pointer", on_click=lambda: State.mover_abajo(nombre_archivo)),
-            rx.icon(tag="trash-2", color="red", size=14, cursor="pointer", on_click=lambda: State.eliminar_archivo(nombre_archivo)),
-            spacing="2"
+            rx.icon_button(rx.icon("arrow-up"), on_click=lambda: State.mover_arriba(nombre_archivo), size="1", variant="ghost"),
+            rx.icon_button(rx.icon("arrow-down"), on_click=lambda: State.mover_abajo(nombre_archivo), size="1", variant="ghost"),
+            rx.icon_button(rx.icon("trash-2"), on_click=lambda: State.eliminar_archivo(nombre_archivo), color_scheme="red", size="1", variant="ghost"),
+            spacing="1"
         ),
-        width="100%", padding="0.3em", border_bottom="1px solid #eee", align_items="center"
+        width="100%", padding="0.5em", border_bottom="1px solid #f0f0f0", align_items="center",
+        _hover={"bg": "gray.50"}
     )
 
 def row_log(mensaje: str):
-    return rx.text(mensaje, font_family="monospace", font_size="0.85em", color="#333")
+    return rx.text(mensaje, font_family="monospace", font_size="0.85em", color="green.300")
 
 def login_modal():
     return rx.dialog.root(
@@ -478,86 +490,63 @@ def perfil_modal():
 
 def content_inicio():
     return rx.vstack(
-        # --- HEADER CON LOGO ---
+        # --- HEADER ---
         rx.hstack(
-            rx.image(
-                src="/logo.jpeg",
-                width="100px",
-                height="auto",
-                border_radius="10px",
-                object_fit="contain"
-            ),
-            rx.heading("Modelo de Estimador de riesgo", size="8", font_family="serif"),
-            align_items="center",
-            spacing="5",
-            margin_bottom="1em",
-            width="100%",
-            justify_content="start"
+            rx.image(src="/logo.jpeg", width="80px", height="auto", border_radius="lg", object_fit="contain"),
+            rx.heading("Modelo de Estimador de Riesgo", size="8", font_family="serif", color="gray.800"),
+            align_items="center", spacing="5", margin_bottom="2em", width="100%", justify_content="start"
         ),
-
-        # --- DESCRIPCIÓN GENERAL ---
+        
+        # --- RESUMEN ---
         rx.box(
             rx.text(
                 "Herramienta de analítica predictiva diseñada para detectar estudiantes en riesgo de deserción o retraso académico. "
                 "Compara el desempeño histórico (data de titulados) con indicadores actuales de motivación, reprobación y preparación inicial (PAES).",
-                margin_bottom="0.5em",
-                color="gray.700"
+                margin_bottom="1em", color="gray.600"
             ),
             rx.text(
                 "(Resumen): El sistema calcula un Índice de Riesgo Total (Ri) fusionando datos cuantitativos (tiempo de titulación) y cualitativos (motivación). "
                 "Permite al cuerpo docente visualizar alertas tempranas por carrera y por estudiante.",
-                color="teal.600",
-                font_weight="bold"
+                color="teal.600", font_weight="bold"
             ),
-            style=style_card_modern,
-            margin_y="2em"
+            style=style_card_modern, margin_y="2em"
         ),
 
         # --- ÍNDICE ---
         rx.vstack(
-            rx.heading("Index :", size="5", color="gray.800"),
-            rx.scroll_area(
-                rx.vstack(
-                    rx.link("• Explicación", href="#explicacion", color="teal.500"),
-                    rx.link("• Docente", href="#docente", color="teal.500"),
-                    rx.link("• Contacto", href="#contacto", color="teal.500"),
-                    spacing="3",
-                    padding="1em"
-                ),
-                type="always", scrollbars="vertical", style={"height": "150px", "width": "100%", "bg": "gray.50", "border_radius": "md"}
+            rx.heading("Contenidos", size="5", color="gray.800", margin_bottom="0.5em"),
+            rx.hstack(
+                rx.link(rx.button("Explicación del Modelo", variant="soft", color_scheme="teal"), href="#explicacion"),
+                rx.link(rx.button("Instrucciones Docente", variant="soft", color_scheme="blue"), href="#docente"),
+                rx.link(rx.button("Contacto", variant="soft", color_scheme="gray"), href="#contacto"),
+                spacing="4"
             ),
-            width="100%", max_width="400px", align_items="start", margin_bottom="4em"
+            width="100%", margin_bottom="4em"
         ),
-
-        rx.divider(border_color="gray.200"),
-
+        
+        rx.divider(border_color="gray.200", margin_y="2em"),
+        
         # --- EXPLICACIÓN ---
         rx.vstack(
-            rx.heading("Explicación del Modelo", size="8", font_family="serif", margin_top="1em", color="gray.800"),
+            rx.heading("Explicación del Modelo", size="7", font_family="serif", margin_top="1em", color="gray.800"),
             rx.box(
                 rx.text(
                     "El modelo matemático se basa en la fórmula: Ri = α(APi – Bi) + β(P̄i + IPAi). "
                     "Donde (Bi) es la Brecha Histórica calculada con datos ingresados. "
                     "Si un estudiante supera esta brecha y tiene baja motivación y baja preparación inicial, se activa la Alerta Roja.",
-                    margin_bottom="1em",
-                    color="gray.700"
+                    color="gray.700", line_height="1.6"
                 ),
                 style=style_card_modern,
-                min_height="150px"
             ),
-            id="explicacion",
-            width="100%",
-            align_items="center",
-            margin_bottom="4em"
+            id="explicacion", width="100%", align_items="start", margin_bottom="4em"
         ),
-
-        rx.divider(border_color="gray.200"),
-
-        # --- DOCENTE (CON INSTRUCCIONES Y VIDEO CUADRADO) ---
+        
+        rx.divider(border_color="gray.200", margin_y="2em"),
+        
+        # --- DOCENTE (REDDISEÑADO) ---
         rx.vstack(
-            rx.heading("Docente - Instrucciones de Uso", size="8", font_family="serif", margin_top="1em", color="gray.800"),
+            rx.heading("Docente - Instrucciones de Uso", size="7", font_family="serif", margin_top="1em", color="gray.800"),
             rx.hstack(
-                # LISTA DE PASOS (Limpia y Separada)
                 rx.box(
                     rx.list.unordered(
                         rx.list.item(rx.text("Paso 1: ", font_weight="bold", color="teal.600"), "Inicie sesión con sus credenciales.", color="gray.700"),
@@ -566,245 +555,333 @@ def content_inicio():
                         rx.list.item(rx.text("Paso 4: ", font_weight="bold", color="teal.600"), "Cargue los archivos CSV en el orden: 1.Titulados, 2.Motivación, 3.Preparación.", color="gray.700"),
                         rx.list.item(rx.text("Paso 5: ", font_weight="bold", color="teal.600"), "Vaya a la pestaña 'Resultados'.", color="gray.700"),
                         rx.list.item(rx.text("Paso 6: ", font_weight="bold", color="teal.600"), "Seleccione el tipo de simulación y genere las alertas.", color="gray.700"),
-                        spacing="5" # Mayor separación entre pasos
+                        spacing="4"
                     ),
                     style=style_card_modern,
-                    width="55%",
-                    height="auto" # Altura automática para que se ajuste al contenido
+                    width="60%",
+                    height="auto"
                 ),
-
-                # VIDEO YOUTUBE (Más Cuadrado y Separado)
+                
+                # VIDEO CUADRADO Y LIMPIO
                 rx.vstack(
-                    rx.text("Video Tutorial:", font_weight="bold", font_size="0.9em", color="teal.600", margin_bottom="0.5em"),
-                    # Usamos aspect_ratio para forzar una forma más cuadrada (ej. 4/3 o 1/1)
+                    rx.text("Video Tutorial:", font_weight="bold", font_size="1em", color="teal.800"),
                     rx.aspect_ratio(
                         rx.video(
-                            src="https://www.youtube.com/embed/KlF33--1i8I",
-                            width="100%",
-                            height="100%", # El video ocupa todo el contenedor aspect_ratio
-                            controls=True,
+                            src="https://www.youtube.com/embed/8d-bT6qGqGk",
+                            width="100%", height="100%", controls=True
                         ),
-                        ratio=4/3, # Proporción más cuadrada (puedes probar 1/1 para totalmente cuadrado)
-                        width="100%"
+                        ratio=4/3,
+                        width="100%",
+                        border_radius="lg",
+                        overflow="hidden",
+                        box_shadow="lg"
                     ),
-                    rx.text("(Video demostrativo)", font_size="0.75em", color="gray.500", margin_top="0.5em"),
-                    width="40%",
-                    align_items="start"
+                    rx.text("(Demostración Rápida)", font_size="0.8em", color="gray.500"),
+                    width="35%", align_items="center"
                 ),
-                width="100%",
-                align_items="start",
-                spacing="6" # Mayor separación entre la lista y el video
+                width="100%", spacing="6", align_items="start"
             ),
-            id="docente",
-            width="100%",
-            margin_bottom="4em"
+            id="docente", width="100%", margin_bottom="4em"
         ),
-
-        rx.divider(border_color="gray.200"),
-
+        
+        rx.divider(border_color="gray.200", margin_y="2em"),
+        
         # --- CONTACTO ---
         rx.vstack(
-            rx.heading("Contacto y Soporte", size="8", font_family="serif", margin_top="1em", color="gray.800"),
+            rx.heading("Contacto y Soporte", size="7", font_family="serif", margin_top="1em", color="gray.800"),
             rx.box(
                 rx.vstack(
-                    rx.text("Para dudas técnicas o reporte de errores, contactar al equipo de desarrollo de Ingeniería Civil Industrial.", color="gray.700"),
-                    rx.text("Repositorio del Proyecto:", font_weight="bold", color="gray.800", margin_top="0.5em"),
+                    rx.text("Para dudas técnicas o reporte de errores, contactar al equipo de desarrollo.", color="gray.600"),
+                    rx.divider(margin_y="1em"),
                     rx.link(
-                        "Kristhoball/estimador-riesgo: Modelo de estimador de riesgo estudiantil",
+                        rx.hstack(rx.icon("github"), rx.text("Ver Repositorio en GitHub")),
                         href="https://github.com/Kristhoball/estimador-riesgo",
-                        color="teal.500",
-                        font_weight="medium",
-                        is_external=True
+                        color="white", bg="black", padding="0.8em", border_radius="md", _hover={"opacity": 0.8}, is_external=True
                     ),
-                    spacing="2"
+                    align_items="center"
                 ),
                 style=style_card_modern,
-                height="auto",
-                padding_y="3em"
             ),
-            id="contacto",
-            width="100%",
-            margin_bottom="4em"
+            id="contacto", width="100%", margin_bottom="4em"
         ),
-
-        align_items="start", width="100%", padding="3em", bg="gray.50" # Fondo general más suave
+        align_items="start", width="100%", padding="3em", bg="gray.50"
     )
 
 def content_upload():
     return rx.vstack(
-        rx.heading("Upload", size="8", font_family="serif", margin_bottom="1em"),
+        rx.heading("Carga de Datos", size="8", font_family="serif", margin_bottom="0.5em", color="gray.800"),
+        rx.text("Sube los archivos CSV necesarios para iniciar el análisis.", color="gray.500", margin_bottom="2em"),
+        
         rx.hstack(
+            # --- CAJA IZQUIERDA: INPUTS ---
             rx.box(
-                rx.heading("Ingrese los datos", size="4"),
-                rx.hstack(
-                    rx.text("Simulado:", font_weight="bold", font_size="0.9em"),
-                    rx.radio_group(["Si", "No"], direction="row", on_change=State.set_es_simulado, value=State.es_simulado),
-                    rx.text(f"(Seleccionado: {State.es_simulado})", font_size="0.8em", color="blue"),
-                    margin_bottom="1em", align_items="center", spacing="3"
+                rx.heading("1. Configuración", size="4", color="teal.700", margin_bottom="1em"),
+                rx.vstack(
+                    rx.text("¿Es una simulación?", font_weight="bold", color="gray.700"),
+                    rx.hstack(
+                        rx.radio_group(["Si", "No"], direction="row", on_change=State.set_es_simulado, value=State.es_simulado, color_scheme="teal"),
+                        rx.badge(f"Seleccionado: {State.es_simulado}", color_scheme="blue", variant="soft"),
+                        align_items="center", spacing="4"
+                    ),
+                    width="100%", margin_bottom="2em"
                 ),
+                
+                rx.heading("2. Archivos", size="4", color="teal.700", margin_bottom="1em"),
                 rx.upload(
-                    rx.vstack(rx.button("Seleccionar archivos", variant="outline", size="2"), rx.text("Arrastre aquí .csv", font_size="0.8em", color="gray"), align_items="center"),
-                    id="upload_box", border="1px dotted black", padding="1.5em", margin_y="1em", accept={"text/csv": [".csv"]}, multiple=True
-                ),
-                rx.text("Archivos en memoria:", font_weight="bold", font_size="0.9em"),
-                rx.scroll_area(
-                    rx.vstack(rx.cond(State.archivos_visuales, rx.foreach(State.archivos_visuales, lambda x, i: row_archivo_simple(x, i)), rx.text("Ningún archivo cargado aún.", font_style="italic", color="gray", font_size="0.8em")), width="100%"),
-                    height="100px", type="always", scrollbars="vertical", bg="gray.50", padding="0.5em", border="1px solid #eee", margin_bottom="1em"
-                ),
-                rx.center(
                     rx.vstack(
-                        rx.button("Cargar y Procesar", on_click=State.handle_upload(rx.upload_files(upload_id="upload_box")), loading=State.procesando, width="100%", color_scheme="teal"),
-                        rx.cond(State.procesando, rx.vstack(rx.text(f"Procesando... {State.progreso}%", font_size="0.8em", color="teal"), rx.progress(value=State.progreso, max=100, color_scheme="teal", width="100%"), width="100%", spacing="2", align_items="center")),
-                        width="100%", spacing="3"
-                    ), width="100%"
+                        rx.icon("upload-cloud", size=40, color="gray"),
+                        rx.text("Arrastra archivos CSV aquí", font_weight="bold", color="gray.700"),
+                        rx.text("o haz clic para seleccionar", font_size="0.8em", color="gray.500"),
+                        align_items="center", spacing="2"
+                    ),
+                    id="upload_box",
+                    style=style_input_box,
+                    accept={"text/csv": [".csv"]}, multiple=True
                 ),
-                style=style_border_box, height="600px"
+                
+                rx.vstack(
+                    rx.text("Archivos en cola:", font_weight="bold", color="gray.700", margin_top="1.5em"),
+                    rx.scroll_area(
+                        rx.vstack(
+                            rx.cond(
+                                State.archivos_visuales,
+                                rx.foreach(State.archivos_visuales, lambda x, i: row_archivo_simple(x, i)),
+                                rx.center(rx.text("Ningún archivo seleccionado", color="gray.400", padding="1em"))
+                            ),
+                            width="100%"
+                        ),
+                        height="150px", type="always", scrollbars="vertical", bg="white", border="1px solid #e2e8f0", border_radius="md"
+                    ),
+                    width="100%"
+                ),
+
+                rx.button(
+                    "Procesar Datos", 
+                    on_click=State.handle_upload(rx.upload_files(upload_id="upload_box")), 
+                    loading=State.procesando, 
+                    width="100%", size="3", color_scheme="teal", margin_top="2em",
+                    _hover={"transform": "scale(1.02)"}
+                ),
+                rx.cond(
+                    State.procesando, 
+                    rx.box(
+                        rx.text(f"Procesando... {State.progreso}%", font_size="0.8em", color="teal.600", margin_bottom="0.5em", margin_top="1em"), 
+                        rx.progress(value=State.progreso, max=100, color_scheme="teal", width="100%"),
+                        width="100%"
+                    )
+                ),
+                
+                style=style_card_modern,
+                flex="1"
             ),
+            
+            # --- CAJA DERECHA: INFO Y LOGS ---
             rx.box(
-                rx.heading("Orden Requerido:", size="4"),
-                rx.text("Cargue los archivos respetando este orden:", font_size="0.9em", margin_bottom="1em", color="gray"),
-                rx.list.ordered(
-                    rx.list.item(rx.text("1. Titulados", font_weight="bold", color="blue")),
-                    rx.list.item(rx.text("2. Cuestionario (Motivación)", font_weight="bold", color="green")),
-                    rx.list.item(rx.text("3. Preparación", font_weight="bold", color="purple")),
-                    spacing="3"
+                rx.heading("Estado del Sistema", size="4", color="teal.700", margin_bottom="1em"),
+                
+                rx.alert(
+                    rx.alert_icon(),
+                    rx.box(
+                        rx.alert_title("Orden Requerido"),
+                        rx.alert_description(
+                            rx.text("1. Titulados.csv"),
+                            rx.text("2. Motivacion.csv"),
+                            rx.text("3. Preparacion.csv"),
+                        ),
+                    ),
+                    status="info", variant="subtle", color_scheme="blue", margin_bottom="2em", border_radius="md"
                 ),
-                rx.divider(margin_y="1.5em"),
-                rx.text("Logs del sistema:", font_weight="bold", font_size="0.9em"),
-                rx.scroll_area(rx.vstack(rx.foreach(State.logs, row_log), width="100%", spacing="1"), height="250px", type="always", scrollbars="vertical", bg="#f4f4f4", padding="0.5em"),
-                style=style_border_box, height="600px"
+                
+                rx.text("Terminal de Procesos:", font_weight="bold", color="gray.700", margin_bottom="0.5em"),
+                rx.box(
+                    rx.scroll_area(
+                        rx.vstack(rx.foreach(State.logs, row_log), width="100%", spacing="1", align_items="start"),
+                        height="400px", type="always", scrollbars="vertical"
+                    ),
+                    bg="gray.900", color="green.300", font_family="monospace", padding="1em", border_radius="md", width="100%"
+                ),
+                
+                style=style_card_modern,
+                flex="1"
             ),
-            width="100%", spacing="4"
+            width="100%", spacing="6", align_items="start"
         ),
-        align_items="start", width="100%", padding="3em"
+        align_items="start", width="100%", padding="3em", bg="gray.50"
     )
 
 def content_resultados():
     return rx.vstack(
-        rx.heading("Resultados", size="8", font_family="serif"),
+        rx.heading("Resultados del Análisis", size="8", font_family="serif", margin_bottom="1em", color="gray.800"),
+        
+        # --- PANEL DE CONTROL ---
         rx.box(
             rx.hstack(
-                rx.vstack(rx.text("Generar resultados con:", font_weight="bold"), rx.scroll_area(rx.radio_group(items=State.solo_archivo_titulados, direction="column", on_change=State.seleccionar_archivo, value=State.seleccionado), height="60px"), width="50%"),
-                rx.divider(orientation="vertical", height="60px", border_color="black"),
+                # Selección de Archivo
                 rx.vstack(
-                    rx.text("Tipo de simulación:", font_weight="bold"),
-                    rx.radio_group(["Muestra estratificada por criterio de Neyman", "Combinatoria", "Eliminación"], direction="column", on_change=State.set_tipo_simulacion, value=State.tipo_simulacion),
-
+                    rx.heading("1. Fuente de Datos", size="3", color="teal.700"),
+                    rx.scroll_area(
+                        rx.radio_group(
+                            items=State.solo_archivo_titulados, 
+                            direction="column", 
+                            on_change=State.seleccionar_archivo, 
+                            value=State.seleccionado,
+                            color_scheme="teal"
+                        ), 
+                        height="80px", width="100%"
+                    ),
+                    width="40%", align_items="start", padding_right="2em", border_right="1px solid #e2e8f0"
+                ),
+                
+                # Selección de Algoritmo
+                rx.vstack(
+                    rx.heading("2. Algoritmo", size="3", color="teal.700"),
+                    rx.radio_group(
+                        ["Muestra estratificada por criterio de Neyman", "Combinatoria", "Eliminación"], 
+                        direction="column", 
+                        on_change=State.set_tipo_simulacion, 
+                        value=State.tipo_simulacion,
+                        color_scheme="blue"
+                    ),
+                    # Input condicional bonito
                     rx.cond(
                         State.tipo_simulacion == "Combinatoria",
-                        rx.vstack(
-                            rx.text("Máximo de Filas a Simular (por carrera):", font_size="0.8em", margin_top="0.8em"),
+                        rx.box(
+                            rx.text("Filas máx. por carrera:", font_size="0.8em", color="gray.500", margin_top="0.5em"),
                             rx.input(
                                 value=State.max_filas_combinatoria,
                                 on_change=State.set_max_filas_combinatoria,
-                                type="number",
-                                placeholder="Ej: 2000",
-                                max_length=5,
+                                type="number", placeholder="Ej: 2000", max_length=5,
+                                border_color="teal.200", focus_border_color="teal.500"
                             ),
-                            # USAMOS LA VAR CALCULADA
-                            rx.text(
-                                State.info_estimacion_filas,
-                                font_size="0.7em",
-                                color="gray"
-                            ),
-                            align_items="start",
-                            width="100%"
+                            rx.text(State.info_estimacion_filas, font_size="0.7em", color="orange.500", margin_top="0.2em"),
+                            margin_top="0.5em", width="100%"
                         )
                     ),
-
-                    width="40%",
-                    align_items="start"
+                    width="40%", align_items="start"
                 ),
-                width="100%", spacing="4"
+                
+                # Botón de Acción
+                rx.center(
+                    rx.button(
+                        "Generar Alertas", 
+                        on_click=State.generar_graficos, 
+                        loading=State.procesando_graficos, 
+                        size="4", 
+                        color_scheme="teal",
+                        width="100%",
+                        _hover={"transform": "scale(1.05)"}
+                    ),
+                    width="20%"
+                ),
+                
+                width="100%", spacing="4", align_items="start"
             ),
-            rx.center(
-                rx.vstack(
-                    rx.button("Click para generar alerta", on_click=State.generar_graficos, loading=State.procesando_graficos, variant="outline", color_scheme="gray", width="90%", height="3em", border="1px solid black"),
-                    rx.cond(State.procesando_graficos, rx.vstack(rx.text("Generando visualizaciones...", font_size="0.8em", color="blue"), rx.progress(value=State.progreso, color_scheme="blue", width="100%"), width="90%", spacing="2", align_items="center")),
-                    width="100%", align_items="center", margin_top="1.5em"
-                ), width="100%"
-            ),
-            style=style_border_box, margin_y="1.5em"
+            style=style_card_modern, margin_bottom="2em"
         ),
-        rx.heading("Gráfica de resultado Por carrera", size="6", font_family="serif"),
-        rx.box(rx.cond(State.img_carrera != "", rx.image(src=State.img_carrera, width="100%", height="auto"), rx.center(rx.text("Gráfico no generado.", color="gray", padding="2em"))), bg="white", border="1px solid black", width="100%", min_height="200px", margin_bottom="2em", overflow="hidden"),
-        rx.cond(State.img_carrera != "", rx.text(f"Resultados generados con el archivo: {State.seleccionado}", font_size="0.9em", color="gray", margin_bottom="2em")),
-        rx.heading("Gráfica de resultado Por estudiante", size="6", font_family="serif"),
-        rx.box(rx.cond(State.img_estudiantes != "", rx.image(src=State.img_estudiantes, width="100%", height="auto"), rx.center(rx.text("Gráfico no generado o método sin gráfico.", color="gray", padding="2em"))), bg="white", border="1px solid black", width="100%", height="500px", overflow="auto"),
-        rx.cond(State.img_estudiantes != "", rx.vstack(rx.text(f"Resultados generados con el archivo: {State.seleccionado}", font_size="0.9em", color="gray"), rx.text(f"Simulación visualizada: {State.tipo_simulacion}", font_size="0.9em", color="blue", font_weight="bold"), align_items="start", spacing="1", margin_bottom="3em")),
-        align_items="start", width="100%", padding="3em"
+        
+        # --- GRÁFICOS ---
+        rx.heading("Riesgo por Carrera (Macro)", size="5", color="gray.700", margin_bottom="0.5em"),
+        rx.box(
+            rx.cond(
+                State.img_carrera != "", 
+                rx.image(src=State.img_carrera, width="100%", height="auto", border_radius="lg"), 
+                rx.center(rx.vstack(rx.icon("bar-chart-2", size=40, color="gray"), rx.text("Gráfico no generado", color="gray.400")), padding="4em")
+            ), 
+            style=style_card_modern, margin_bottom="2em"
+        ),
+        
+        rx.heading("Riesgo por Estudiante (Micro)", size="5", color="gray.700", margin_bottom="0.5em"),
+        rx.box(
+            rx.cond(
+                State.img_estudiantes != "", 
+                rx.image(src=State.img_estudiantes, width="100%", height="auto", border_radius="lg"), 
+                rx.center(rx.vstack(rx.icon("users", size=40, color="gray"), rx.text("Gráfico no generado", color="gray.400")), padding="4em")
+            ), 
+            style=style_card_modern, height="600px", overflow="auto"
+        ),
+        
+        align_items="start", width="100%", padding="3em", bg="gray.50"
     )
 
 def content_historial():
     return rx.vstack(
-        rx.heading("Historial de Simulaciones", size="4", margin_bottom="10px"),
-        rx.foreach(
-            State.historial,
-            lambda registro, index: rx.box(
-                rx.hstack(
-                    rx.vstack(
-                        rx.hstack(
-                            rx.text(f"🕒 {registro['hora']}", font_weight="bold", font_size="sm"),
-                            rx.badge(registro["tipo"], color_scheme="blue", variant="solid")
+        rx.heading("Historial de Simulaciones", size="8", font_family="serif", margin_bottom="1em", color="gray.800"),
+        rx.vstack(
+            rx.foreach(
+                State.historial,
+                lambda registro, index: rx.box(
+                    rx.hstack(
+                        rx.vstack(
+                            rx.hstack(
+                                rx.badge(f"{registro['hora']}", color_scheme="gray", variant="solid"),
+                                rx.badge(registro["tipo"], color_scheme="blue", variant="subtle"),
+                                spacing="2"
+                            ),
+                            rx.text(registro["detalle"], font_size="sm", color="gray.600", margin_top="0.5em"),
+                            align_items="start", spacing="0"
                         ),
-                        rx.text(registro["detalle"], font_size="xs", color="gray"),
-                        align_items="start", spacing="1"
+                        rx.spacer(), 
+                        rx.hstack(
+                            rx.tooltip(rx.icon_button(rx.icon("download"), on_click=lambda: State.descargar_simulacion(index), color_scheme="green", variant="soft", size="2"), label="Descargar ZIP"),
+                            rx.tooltip(rx.icon_button(rx.icon("trash-2"), on_click=lambda: State.eliminar_registro_historial(index), color_scheme="red", variant="ghost", size="2"), label="Eliminar"),
+                            spacing="2"
+                        ),
+                        width="100%", align_items="center"
                     ),
-                    rx.spacer(),
-                    rx.icon_button(rx.icon("download"), on_click=lambda: State.descargar_simulacion(index), color_scheme="green", variant="ghost", size="2"),
-                    rx.icon_button(rx.icon("trash-2"), on_click=lambda: State.eliminar_registro_historial(index), color_scheme="red", variant="ghost", size="2"),
-                    width="100%", align_items="center"
-                ),
-                border="1px solid #e2e8f0", padding="10px", border_radius="8px", width="100%", background_color="white", shadow="sm", margin_bottom="8px"
-            )
+                    bg="white", padding="1.5em", border_radius="lg", width="100%", 
+                    box_shadow="0 2px 4px rgba(0,0,0,0.05)", border="1px solid #f0f0f0",
+                    _hover={"box_shadow": "0 4px 6px rgba(0,0,0,0.1)"}
+                )
+            ),
+            width="100%", spacing="3"
         ),
-        height="100%", overflow_y="auto", padding_right="5px"
+        align_items="start", width="100%", padding="3em", bg="gray.50", height="100vh", overflow="auto"
     )
 
 def contenido() -> rx.Component:
-
     # 1. PIEZAS
     vista_acceso_restringido = rx.center(
         rx.vstack(
-            rx.heading("Acceso Restringido", size="8", color="gray"),
-            rx.text("Por favor inicie sesión para ver el panel completo."),
-            rx.button("Iniciar Sesión", on_click=lambda: State.set_show_login(True), size="4", color_scheme="teal", margin_top="1em"),
+            rx.icon("lock", size=60, color="gray"),
+            rx.heading("Acceso Restringido", size="8", color="gray.600"),
+            rx.text("Por favor inicie sesión para ver el panel completo.", color="gray.500"),
+            rx.button("Iniciar Sesión", on_click=lambda: State.set_show_login(True), size="4", color_scheme="teal", margin_top="1em", variant="surface"),
             spacing="4", align_items="center"
-        ), height="80vh", width="100%"
+        ), height="80vh", width="100%", bg="gray.50"
     )
 
     contenido_dinamico = rx.cond(
         State.vista_actual == "historial",
-        rx.box(content_historial(), padding="2em", width="100%"),
+        content_historial(),
         rx.cond(
             State.vista_actual == "resultados",
             content_resultados(),
             rx.cond(
                 State.vista_actual == "upload",
                 content_upload(),
-                content_inicio()
+                content_inicio() 
             )
         )
     )
 
     # 2. BARRA SUPERIOR
     barra_superior = rx.hstack(
-        rx.spacer(),
+        rx.spacer(), 
         rx.cond(
             State.esta_logueado,
             rx.hstack(
-                rx.badge(f"👤 {State.usuario_actual}", color_scheme="green", variant="solid", padding="0.8em"),
-                rx.button("Usuario", on_click=lambda: State.set_show_perfil(True), variant="outline", size="2", color_scheme="blue"),
-                perfil_modal(),
-                rx.button("Cerrar Sesión", on_click=State.cerrar_sesion, color_scheme="red", size="2"),
-                spacing="3"
+                rx.badge(f"👤 {State.usuario_actual}", color_scheme="green", variant="subtle", padding="0.5em"),
+                rx.button("Mi Perfil", on_click=lambda: State.set_show_perfil(True), variant="ghost", size="2", color_scheme="gray"),
+                perfil_modal(), 
+                rx.button("Salir", on_click=State.cerrar_sesion, color_scheme="red", variant="ghost", size="2"),
+                spacing="4", align_items="center"
             ),
             rx.box(
-                rx.button("Iniciar Sesión", on_click=lambda: State.set_show_login(True), variant="outline"),
+                rx.button("Acceso Docente", on_click=lambda: State.set_show_login(True), variant="solid", color_scheme="teal"),
                 login_modal()
             )
         ),
-        width="100%", padding="1.5em", border_bottom="1px solid #e2e8f0", bg="white"
+        width="100%", padding="1.2em", border_bottom="1px solid #e2e8f0", bg="white", position="sticky", top="0", z_index="50"
     )
 
     return rx.box(
@@ -818,6 +895,6 @@ def contenido() -> rx.Component:
             ),
             width="100%"
         ),
-        on_mount=State.check_session,
-        width="100%", height="100vh", overflow="auto", background_color="gray.50" # Fondo general suave
+        on_mount=State.check_session, 
+        width="100%", height="100vh", overflow="auto", background_color="gray.50"
     )
