@@ -12,8 +12,8 @@ from datetime import datetime
 import time 
 
 # Importamos la lógica de cálculo y filtrado
-from ..codigo import Filtrar_Archivo_En_Disco 
-from ..codigo2 import Calcular_Resultados_Finales
+from .codigo import Filtrar_Archivo_En_Disco 
+from .codigo2 import Calcular_Resultados_Finales
 
 # =========================================================================
 # CACHE GLOBAL
