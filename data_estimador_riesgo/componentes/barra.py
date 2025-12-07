@@ -32,9 +32,22 @@ def boton_menu(nombre: str, vista_destino: str, funcion_click):
 
 def barra() -> rx.Component:
     return rx.vstack(
+        # --- ZONA DEL LOGO ---
         rx.box(
-            rx.text("Logo", font_weight="bold", size="5"),
-            padding="1.5em", width="100%", border_bottom="1px solid #e0e0e0"
+            rx.center(
+                rx.image(
+                    # ACTUALIZADO: Usa 'logo.jpeg' exacto.
+                    # Asegúrate de que el archivo esté en la carpeta 'assets' con ese nombre.
+                    src="/logo.jpeg", 
+                    width="140px", 
+                    height="auto",
+                    alt="Logo Institucional",
+                    object_fit="contain"
+                )
+            ),
+            padding="1.5em", 
+            width="100%", 
+            border_bottom="1px solid #e0e0e0"
         ),
         
         # Navegación con Botones Bonitos
