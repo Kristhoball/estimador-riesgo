@@ -566,7 +566,7 @@ def content_inicio():
                     rx.text("Video Tutorial:", font_weight="bold", font_size="0.8em"),
                     rx.video(
                         # URL de video 10 min
-                        src="https://www.youtube.com/watch?v=KlF33--1i8I", 
+                        src="https://www.youtube.com/embed/KlF33--1i8I", 
                         width="100%", 
                         height="auto",
                         controls=True,
