@@ -386,10 +386,8 @@ class State(rx.State):
         self.procesando_graficos = False
 
 # ==========================================
-# INTERFAZ VISUAL (MODERNIZADA Y MINIMALISTA)
+# INTERFAZ VISUAL
 # ==========================================
-
-# Estilos base
 style_card_modern = {
     "bg": "white",
     "padding": "2em",
@@ -492,7 +490,13 @@ def content_inicio():
     return rx.vstack(
         # --- HEADER CON LOGO (Alineación Mejorada) ---
         rx.hstack(
-            rx.image(src="/logo.jpeg", width="80px", height="auto", border_radius="lg", object_fit="contain"),
+            rx.image(
+                src="/logo.jpeg", 
+                width="80px", 
+                height="auto", 
+                border_radius="8px",
+                object_fit="contain"
+            ),
             rx.heading("Modelo de Estimador de Riesgo", size="8", font_family="serif", color="gray.800"),
             align_items="center", spacing="5", margin_bottom="2em", width="100%", justify_content="start"
         ),
@@ -568,8 +572,6 @@ def content_inicio():
                     rx.text("Video Tutorial:", font_weight="bold", font_size="1em", color="teal.800"),
                     rx.aspect_ratio(
                         rx.video(
-                            # He cambiado la URL por el video corto (Timer) que es seguro y no bloquea
-                            # Puedes volver a poner tu video cuando quieras, pero recuerda usar src=
                             src="https://www.youtube.com/embed/8d-bT6qGqGk",
                             width="100%", height="100%", controls=True
                         ),
@@ -594,7 +596,7 @@ def content_inicio():
             rx.heading("Contacto y Soporte", size="7", font_family="serif", margin_top="1em", color="gray.800"),
             rx.box(
                 rx.vstack(
-                    rx.text("Para dudas técnicas o reporte de errores, contactar al equipo de desarrollo.", color="gray.600"),
+                    rx.text("Para dudas técnicas o reporte de errores, contactar al equipo de desarrollo de Ingeniería Civil Industrial.", color="gray.600"),
                     rx.divider(margin_y="1em"),
                     rx.link(
                         rx.hstack(rx.icon("github"), rx.text("Ver Repositorio en GitHub")),
@@ -683,7 +685,7 @@ def content_upload():
             rx.box(
                 rx.heading("Estado del Sistema", size="4", color="teal.700", margin_bottom="1em"),
                 
-                # --- FIX: Cambio 'rx.alert' a 'rx.callout' (Lo que rompió el build antes) ---
+                # --- FIX: Cambio 'rx.alert' a 'rx.callout' ---
                 rx.callout(
                     rx.vstack(
                         rx.text("Orden Requerido", font_weight="bold"),
