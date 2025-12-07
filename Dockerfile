@@ -2,8 +2,8 @@
 FROM python:3.11
 
 # 1. Configuración básica y ROMPE-CACHÉ
-# Incrementamos esto para asegurar que Zeabur reconstruya todo
-ENV CACHE_BUST=20251207_1
+# Subimos a _9 para obligar a Zeabur a leer el código arreglado de barra.py
+ENV CACHE_BUST=20251206_9
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
@@ -36,7 +36,7 @@ COPY --chown=user requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# 6. Copiar Código (FUERZA la copia de tu nuevo código Python antes de la exportación)
+# 6. COPIAR CÓDIGO (Aquí se copia tu barra.py arreglado)
 COPY --chown=user . .
 
 # 7. Asegurar permisos de ejecución
@@ -44,7 +44,7 @@ USER root
 RUN chmod +x start.sh
 USER user
 
-# 8. Exportar frontend
+# 8. Exportar frontend (Ahora sí debería funcionar sin errores)
 RUN reflex export --frontend-only --no-zip
 
 CMD ["bash", "./start.sh"]
