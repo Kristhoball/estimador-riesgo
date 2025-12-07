@@ -1,5 +1,10 @@
 import reflex as rx
-from .contenido import State
+# Importamos State con manejo de errores por si acaso, 
+# pero idealmente debe coincidir con la ubicación real.
+try:
+    from .contenido import State
+except ImportError:
+    from data_estimador_riesgo.componentes.contenido import State
 
 def boton_menu(nombre: str, vista_destino: str, funcion_click):
     # Lógica de estilo "activo" vs "inactivo"
@@ -36,13 +41,15 @@ def barra() -> rx.Component:
         rx.box(
             rx.center(
                 rx.image(
-                    # ACTUALIZADO: Usa 'logo.jpeg' exacto.
-                    # Asegúrate de que el archivo esté en la carpeta 'assets' con ese nombre.
+                    # CRÍTICO: La imagen debe estar en la carpeta 'assets' del proyecto.
+                    # Nombre exacto: logo.jpeg (todo minúsculas)
                     src="/logo.jpeg", 
                     width="140px", 
                     height="auto",
                     alt="Logo Institucional",
-                    object_fit="contain"
+                    object_fit="contain",
+                    # Fallback por si la imagen falla (muestra un texto o icono)
+                    fallback=rx.text("Logo no encontrado", font_size="0.8em", color="red")
                 )
             ),
             padding="1.5em", 
