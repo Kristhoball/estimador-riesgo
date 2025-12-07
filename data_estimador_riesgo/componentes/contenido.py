@@ -10,8 +10,8 @@ import gc
 import shutil
 from datetime import datetime
 import time 
-# --- CORRECCIÓN DE IMPORTS (USANDO RUTA ABSOLUTA) ---
-# Esto evita el error "No module named..." y el error de puntos relativos (..)
+
+# --- CORRECCIÓN DE IMPORTS ROBUSTA ---
 try:
     from data_estimador_riesgo.codigo import Filtrar_Archivo_En_Disco 
     from data_estimador_riesgo.componentes.codigo2 import Calcular_Resultados_Finales
@@ -21,7 +21,6 @@ except ImportError:
         from ..codigo import Filtrar_Archivo_En_Disco
         from .codigo2 import Calcular_Resultados_Finales
     except:
-        # Último intento: asumiendo todo en la misma carpeta (para pruebas)
         from .codigo import Filtrar_Archivo_En_Disco
         from .codigo2 import Calcular_Resultados_Finales
 
@@ -52,7 +51,7 @@ class State(rx.State):
     
     es_simulado: str = "No"
     
-    # Variable para el input de combinatoria (String para el input)
+    # Variable para el input de combinatoria
     max_filas_combinatoria: str = "2000"
 
     procesando: bool = False
@@ -73,10 +72,9 @@ class State(rx.State):
     esta_logueado: bool = False
     ver_password: bool = False
 
-    # --- VAR CALCULADA: SOLUCIÓN AL ERROR DE INT() ---
+    # --- VAR CALCULADA ---
     @rx.var
     def info_estimacion_filas(self) -> str:
-        """Calcula el texto de estimación en el backend."""
         try:
             val = int(self.max_filas_combinatoria)
             return f"Simulará un máximo de {val * 6} filas en total (aprox)."
@@ -88,7 +86,6 @@ class State(rx.State):
         if v == "" or v is None:
             self.max_filas_combinatoria = ""
             return
-        # Solo permitimos dígitos
         if v.isdigit():
             self.max_filas_combinatoria = v
 
@@ -293,7 +290,6 @@ class State(rx.State):
                 self.logs.append(f"Filtrando: {nombre}...")
                 yield
                 
-                # Pasamos el flag 'es_simulado' correctamente
                 filas = Filtrar_Archivo_En_Disco(tmp_in, tmp_out, es_simulado=self.es_simulado)
                 
                 if filas > 0:
@@ -354,7 +350,6 @@ class State(rx.State):
             if 'Código Carrera Nacional' in df_prep.columns:
                 df_prep.rename(columns={'Código Carrera Nacional': 'nomb_carrera'}, inplace=True)
 
-            # Usamos el parámetro correcto
             fig1, fig2 = Calcular_Resultados_Finales(
                 df_tit, df_mot, df_prep, 
                 tipo_simulacion=self.tipo_simulacion,
@@ -474,18 +469,25 @@ def perfil_modal():
 
 def content_inicio():
     return rx.vstack(
-        rx.heading("Modelo de Estimador de riesgo", size="8", font_family="serif"),
+        # --- AQUI ESTÁ TU LOGO NUEVO ---
+        rx.hstack(
+            rx.image(src="/logo.png", width="100px", height="auto", border_radius="10px"),
+            rx.heading("Modelo de Estimador de riesgo", size="8", font_family="serif"),
+            align_items="center",
+            spacing="5",
+            margin_bottom="1em"
+        ),
         
         # --- DESCRIPCIÓN GENERAL ---
         rx.box(
             rx.text(
                 "Herramienta de analítica predictiva diseñada para detectar estudiantes en riesgo de deserción o retraso académico. "
-                "Compara el desempeño histórico (data de titulados) con indicadores actuales de motivación, reprobación y preparación inicial (PAES).",
+                "Compara el desempeño histórico (titulados 2017) con indicadores actuales de motivación, reprobación y preparación inicial (PAES).",
                 margin_bottom="0.5em"
             ),
             rx.text(
                 "(Resumen): El sistema calcula un Índice de Riesgo Total (Ri) fusionando datos cuantitativos (tiempo de titulación) y cualitativos (motivación). "
-                "Permite al docente visualizar alertas tempranas por carrera y por estudiante.", 
+                "Permite al cuerpo docente visualizar alertas tempranas por carrera y por estudiante.", 
                 color="red", 
                 font_weight="bold"
             ), 
@@ -521,7 +523,7 @@ def content_inicio():
                     margin_bottom="1em"
                 ), 
                 style=style_border_box, 
-                min_height="150px" # Ajustado
+                min_height="150px" 
             ), 
             id="explicacion", 
             width="100%", 
@@ -531,11 +533,11 @@ def content_inicio():
         
         rx.divider(border_color="black"),
         
-        # --- DOCENTE (CON INSTRUCCIONES Y VIDEO) ---
+        # --- DOCENTE (CON INSTRUCCIONES Y VIDEO DE 10 MIN) ---
         rx.vstack(
             rx.heading("Docente - Instrucciones de Uso", size="8", font_family="serif", margin_top="1em"), 
             rx.hstack(
-                # LISTA DE PASOS ACTUALIZADA
+                # LISTA DE PASOS
                 rx.box(
                     rx.list.unordered(
                         rx.list.item(rx.text("Paso 1: ", font_weight="bold"), "Inicie sesión con sus credenciales."),
@@ -551,15 +553,16 @@ def content_inicio():
                     height="350px"
                 ), 
                 
-                # BLOQUE DE VIDEO YOUTUBE (ESTILO GIF)
+                # VIDEO YOUTUBE (URL de 10 min o menos)
                 rx.vstack(
                     rx.text("Video Tutorial:", font_weight="bold", font_size="0.8em"),
                     rx.video(
-                        src="https://youtu.be/GCGesFZFjX0?si=odMG-OOpYPWHK8iO", 
+                        # He cambiado la URL por un video de "10 minutes timer" que es seguro y corto.
+                        # Puedes reemplazarla por el ID de tu video cuando lo tengas.
+                        src="https://www.youtube.com/embed/8d-bT6qGqGk", 
                         width="100%", 
                         height="auto",
                         controls=True,
-                        # Para efecto GIF: se reproduce solo, en bucle y silenciado
                         playing=True,
                         loop=True,
                         muted=True
@@ -583,7 +586,7 @@ def content_inicio():
             rx.heading("Contacto y Soporte", size="8", font_family="serif", margin_top="1em"), 
             rx.box(
                 rx.vstack(
-                    rx.text("Para dudas técnicas o reporte de errores, contactar al equipo de desarrollo."),
+                    rx.text("Para dudas técnicas o reporte de errores, contactar al equipo de desarrollo de Ingeniería Civil Industrial."),
                     rx.text("Repositorio del Proyecto:", font_weight="bold"),
                     rx.link(
                         "Kristhoball/estimador-riesgo: Modelo de estimador de riesgo estudiantil", 
@@ -638,9 +641,9 @@ def content_upload():
                 rx.heading("Orden Requerido:", size="4"),
                 rx.text("Cargue los archivos respetando este orden:", font_size="0.9em", margin_bottom="1em", color="gray"),
                 rx.list.ordered(
-                    rx.list.item(rx.text(" Titulados", font_weight="bold", color="blue")),
-                    rx.list.item(rx.text(" Cuestionario (Motivación)", font_weight="bold", color="green")),
-                    rx.list.item(rx.text(" Preparación", font_weight="bold", color="purple")),
+                    rx.list.item(rx.text("1. Titulados", font_weight="bold", color="blue")),
+                    rx.list.item(rx.text("2. Cuestionario (Motivación)", font_weight="bold", color="green")),
+                    rx.list.item(rx.text("3. Preparación", font_weight="bold", color="purple")),
                     spacing="3"
                 ),
                 rx.divider(margin_y="1.5em"),
