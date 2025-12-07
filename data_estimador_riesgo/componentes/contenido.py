@@ -12,10 +12,8 @@ from datetime import datetime
 import time 
 
 # Importamos la lógica de cálculo y filtrado
-# Usamos punto (.) si están en la misma carpeta 'componentes'
-# Si te da error de importación, cambia a '..codigo' y '..codigo2'
-from .codigo import Filtrar_Archivo_En_Disco 
-from .codigo2 import Calcular_Resultados_Finales
+from ..codigo import Filtrar_Archivo_En_Disco 
+from ..codigo2 import Calcular_Resultados_Finales
 
 # =========================================================================
 # CACHE GLOBAL
@@ -65,7 +63,7 @@ class State(rx.State):
     esta_logueado: bool = False
     ver_password: bool = False
 
-    # --- CORRECCIÓN: VAR CALCULADA (Soluciona el TypeError) ---
+    # --- VAR CALCULADA: SOLUCIÓN AL ERROR DE INT() ---
     @rx.var
     def info_estimacion_filas(self) -> str:
         """Calcula el texto de estimación en el backend."""
@@ -467,14 +465,132 @@ def perfil_modal():
 def content_inicio():
     return rx.vstack(
         rx.heading("Modelo de Estimador de riesgo", size="8", font_family="serif"),
-        rx.box(rx.text("Descripción general...", margin_bottom="1em"), rx.text("(Resumen)", color="red", font_weight="bold"), style=style_border_box, margin_y="2em"),
-        rx.vstack(rx.heading("Index :", size="5"), rx.scroll_area(rx.vstack(rx.link("• Explicación", href="#explicacion", color="blue", text_decoration="underline"), rx.link("• Docente", href="#docente", color="blue", text_decoration="underline"), rx.link("• Contacto", href="#contacto", color="blue", text_decoration="underline"), spacing="3"), type="always", scrollbars="vertical", style={"height": "150px", "border": "1px solid black", "padding": "1em", "width": "100%"}), width="100%", max_width="400px", align_items="start", margin_bottom="4em"),
+        
+        # --- DESCRIPCIÓN GENERAL ---
+        rx.box(
+            rx.text(
+                "Herramienta de analítica predictiva diseñada para detectar estudiantes en riesgo de deserción o retraso académico. "
+                "Compara el desempeño histórico (data de titulados) con indicadores actuales de motivación, reprobación y preparación inicial (PAES).",
+                margin_bottom="0.5em"
+            ),
+            rx.text(
+                "(Resumen): El sistema calcula un Índice de Riesgo Total (Ri) fusionando datos cuantitativos (tiempo de titulación) y cualitativos (motivación). "
+                "Permite al docente visualizar alertas tempranas por carrera y por estudiante.", 
+                color="red", 
+                font_weight="bold"
+            ), 
+            style=style_border_box, 
+            margin_y="2em"
+        ),
+
+        # --- ÍNDICE ---
+        rx.vstack(
+            rx.heading("Index :", size="5"), 
+            rx.scroll_area(
+                rx.vstack(
+                    rx.link("• Explicación", href="#explicacion", color="blue", text_decoration="underline"), 
+                    rx.link("• Docente", href="#docente", color="blue", text_decoration="underline"), 
+                    rx.link("• Contacto", href="#contacto", color="blue", text_decoration="underline"), 
+                    spacing="3"
+                ), 
+                type="always", scrollbars="vertical", style={"height": "150px", "border": "1px solid black", "padding": "1em", "width": "100%"}
+            ), 
+            width="100%", max_width="400px", align_items="start", margin_bottom="4em"
+        ),
+        
         rx.divider(border_color="black"),
-        rx.vstack(rx.heading("Explicación", size="8", font_family="serif", margin_top="1em"), rx.box(rx.text("Explicación...", margin_bottom="1em"), style=style_border_box, height="300px"), id="explicacion", width="100%", align_items="center", margin_bottom="4em"),
+        
+        # --- EXPLICACIÓN ---
+        rx.vstack(
+            rx.heading("Explicación del Modelo", size="8", font_family="serif", margin_top="1em"), 
+            rx.box(
+                rx.text(
+                    "El modelo matemático se basa en la fórmula: Ri = α(APi – Bi) + β(P̄i + IPAi). "
+                    "Donde (Bi) es la Brecha Histórica calculada con datos ingresados. "
+                    "Si un estudiante supera esta brecha y tiene baja motivación y baja preparación inicial, se activa la Alerta Roja.",
+                    margin_bottom="1em"
+                ), 
+                style=style_border_box, 
+                min_height="150px" # Ajustado
+            ), 
+            id="explicacion", 
+            width="100%", 
+            align_items="center", 
+            margin_bottom="4em"
+        ),
+        
         rx.divider(border_color="black"),
-        rx.vstack(rx.heading("Docente", size="8", font_family="serif", margin_top="1em"), rx.hstack(rx.box(rx.list.unordered(rx.list.item("Paso 1..."), rx.list.item("Paso 2...")), style=style_border_box, width="60%", height="300px"), rx.vstack(rx.box(rx.center(rx.text("foto")), bg="gray.100", width="150px", height="130px"), width="40%"), width="100%"), id="docente", width="100%", margin_bottom="4em"),
+        
+        # --- DOCENTE (CON INSTRUCCIONES Y VIDEO) ---
+        rx.vstack(
+            rx.heading("Docente - Instrucciones de Uso", size="8", font_family="serif", margin_top="1em"), 
+            rx.hstack(
+                # LISTA DE PASOS ACTUALIZADA
+                rx.box(
+                    rx.list.unordered(
+                        rx.list.item(rx.text("Paso 1: ", font_weight="bold"), "Inicie sesión con sus credenciales."),
+                        rx.list.item(rx.text("Paso 2: ", font_weight="bold"), "Lea la información en la pestaña 'Inicio'."),
+                        rx.list.item(rx.text("Paso 3: ", font_weight="bold"), "Vaya a la pestaña 'Upload'."),
+                        rx.list.item(rx.text("Paso 4: ", font_weight="bold"), "Cargue los archivos CSV en el orden: 1.Titulados, 2.Motivación, 3.Preparación."),
+                        rx.list.item(rx.text("Paso 5: ", font_weight="bold"), "Vaya a la pestaña 'Resultados'."),
+                        rx.list.item(rx.text("Paso 6: ", font_weight="bold"), "Seleccione el tipo de simulación y genere las alertas."),
+                        spacing="2"
+                    ), 
+                    style=style_border_box, 
+                    width="60%", 
+                    height="350px"
+                ), 
+                
+                # BLOQUE DE VIDEO YOUTUBE (ESTILO GIF)
+                rx.vstack(
+                    rx.text("Video Tutorial:", font_weight="bold", font_size="0.8em"),
+                    rx.video(
+                        url="https://youtu.be/GCGesFZFjX0?si=odMG-OOpYPWHK8iO", 
+                        width="100%", 
+                        height="auto",
+                        controls=True,
+                        # Para efecto GIF: se reproduce solo, en bucle y silenciado
+                        playing=True,
+                        loop=True,
+                        muted=True
+                    ),
+                    rx.text("(Video demostrativo)", font_size="0.7em", color="gray"),
+                    width="40%"
+                ), 
+                width="100%",
+                align_items="start",
+                spacing="4"
+            ), 
+            id="docente", 
+            width="100%", 
+            margin_bottom="4em"
+        ),
+        
         rx.divider(border_color="black"),
-        rx.vstack(rx.heading("Contacto", size="8", font_family="serif", margin_top="1em"), rx.box(rx.text("Contacto..."), style=style_border_box, height="200px"), id="contacto", width="100%", margin_bottom="4em"),
+        
+        # --- CONTACTO ---
+        rx.vstack(
+            rx.heading("Contacto y Soporte", size="8", font_family="serif", margin_top="1em"), 
+            rx.box(
+                rx.vstack(
+                    rx.text("Para dudas técnicas o reporte de errores, contactar al equipo de desarrollo."),
+                    rx.text("Repositorio del Proyecto:", font_weight="bold"),
+                    rx.link(
+                        "Kristhoball/estimador-riesgo: Modelo de estimador de riesgo estudiantil", 
+                        href="https://github.com/Kristhoball/estimador-riesgo",
+                        color="blue",
+                        is_external=True
+                    ),
+                    spacing="2"
+                ),
+                style=style_border_box, 
+                height="200px"
+            ), 
+            id="contacto", 
+            width="100%", 
+            margin_bottom="4em"
+        ),
+        
         align_items="start", width="100%", padding="3em"
     )
 
@@ -512,9 +628,9 @@ def content_upload():
                 rx.heading("Orden Requerido:", size="4"),
                 rx.text("Cargue los archivos respetando este orden:", font_size="0.9em", margin_bottom="1em", color="gray"),
                 rx.list.ordered(
-                    rx.list.item(rx.text("1. Titulados", font_weight="bold", color="blue")),
-                    rx.list.item(rx.text("2. Cuestionario (Motivación)", font_weight="bold", color="green")),
-                    rx.list.item(rx.text("3. Preparación", font_weight="bold", color="purple")),
+                    rx.list.item(rx.text(" Titulados", font_weight="bold", color="blue")),
+                    rx.list.item(rx.text(" Cuestionario (Motivación)", font_weight="bold", color="green")),
+                    rx.list.item(rx.text(" Preparación", font_weight="bold", color="purple")),
                     spacing="3"
                 ),
                 rx.divider(margin_y="1.5em"),
@@ -549,7 +665,7 @@ def content_resultados():
                                 placeholder="Ej: 2000",
                                 max_length=5,
                             ),
-                            # VAR CALCULADA
+                            # USAMOS LA VAR CALCULADA
                             rx.text(
                                 State.info_estimacion_filas,
                                 font_size="0.7em",
