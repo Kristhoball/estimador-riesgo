@@ -593,7 +593,7 @@ def content_inicio():
             rx.heading("Contacto y Soporte", size="8", font_family="serif", margin_top="1em"), 
             rx.box(
                 rx.vstack(
-                    rx.text("Para dudas técnicas o reporte de errores, contactar al equipo de desarrollo de Ingeniería Civil Industrial."),
+                    rx.text("Para dudas técnicas o reporte de errores, contactar al equipo de desarrollo."),
                     rx.text("Repositorio del Proyecto:", font_weight="bold"),
                     rx.link(
                         "Kristhoball/estimador-riesgo: Modelo de estimador de riesgo estudiantil", 
