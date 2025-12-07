@@ -1,6 +1,4 @@
 import reflex as rx
-# Importamos State con manejo de errores por si acaso, 
-# pero idealmente debe coincidir con la ubicación real.
 try:
     from .contenido import State
 except ImportError:
@@ -41,15 +39,13 @@ def barra() -> rx.Component:
         rx.box(
             rx.center(
                 rx.image(
-                    # CRÍTICO: La imagen debe estar en la carpeta 'assets' del proyecto.
-                    # Nombre exacto: logo.jpeg (todo minúsculas)
+                    # Asegúrate de que 'logo.jpeg' esté en la carpeta assets
                     src="/logo.jpeg", 
                     width="140px", 
                     height="auto",
-                    alt="Logo Institucional",
+                    alt="Logo Institucional", # Esto es el verdadero fallback estándar
                     object_fit="contain",
-                    # Fallback por si la imagen falla (muestra un texto o icono)
-                    fallback=rx.text("Logo no encontrado", font_size="0.8em", color="red")
+                    # ELIMINADO: fallback=rx.text(...) -> Esto causaba el error crítico
                 )
             ),
             padding="1.5em", 
