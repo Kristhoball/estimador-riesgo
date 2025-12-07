@@ -3,7 +3,7 @@ FROM python:3.11
 
 # 1. Configuración básica y ROMPE-CACHÉ
 # Subimos a _9 para obligar a Zeabur a leer el código arreglado de barra.py
-ENV CACHE_BUST=20251206_9
+ENV CACHE_BUST=20251207_2
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
