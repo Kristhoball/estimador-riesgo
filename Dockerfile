@@ -3,7 +3,7 @@ FROM python:3.11
 
 # 1. Configuración básica y ROMPE-CACHÉ
 # Incrementamos esto para asegurar que Zeabur reconstruya todo
-ENV CACHE_BUST=20251206_9
+ENV CACHE_BUST=20251207_1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
