@@ -469,25 +469,33 @@ def perfil_modal():
 
 def content_inicio():
     return rx.vstack(
-        # --- AQUI ESTÁ TU LOGO NUEVO ---
+        # --- HEADER CON LOGO (Alineación Mejorada) ---
         rx.hstack(
-            rx.image(src="/logo.png", width="100px", height="auto", border_radius="10px"),
+            rx.image(
+                src="/logo.jpeg", # IMPORTANTE: Coincide con tu archivo en assets/
+                width="80px", 
+                height="auto", 
+                border_radius="8px",
+                object_fit="contain"
+            ),
             rx.heading("Modelo de Estimador de riesgo", size="8", font_family="serif"),
             align_items="center",
             spacing="5",
-            margin_bottom="1em"
+            margin_bottom="1.5em",
+            width="100%",
+            justify_content="start" # Alineado a la izquierda junto al texto
         ),
         
         # --- DESCRIPCIÓN GENERAL ---
         rx.box(
             rx.text(
                 "Herramienta de analítica predictiva diseñada para detectar estudiantes en riesgo de deserción o retraso académico. "
-                "Compara el desempeño histórico (titulados 2017) con indicadores actuales de motivación, reprobación y preparación inicial (PAES).",
+                "Compara el desempeño histórico (data de titulados) con indicadores actuales de motivación, reprobación y preparación inicial (PAES).",
                 margin_bottom="0.5em"
             ),
             rx.text(
-                "(Resumen): El sistema calcula un Índice de Riesgo Total (Ri) fusionando datos cuantitativos (tiempo de titulación) y cualitativos (motivación). "
-                "Permite al cuerpo docente visualizar alertas tempranas por carrera y por estudiante.", 
+                "El sistema calcula un Índice de Riesgo Total (Ri) fusionando datos cuantitativos (tiempo de titulación) y cualitativos (motivación). "
+                "Permite al docente visualizar alertas tempranas por carrera y por estudiante.", 
                 color="red", 
                 font_weight="bold"
             ), 
@@ -533,7 +541,7 @@ def content_inicio():
         
         rx.divider(border_color="black"),
         
-        # --- DOCENTE (CON INSTRUCCIONES Y VIDEO DE 10 MIN) ---
+        # --- DOCENTE (CON INSTRUCCIONES Y VIDEO CORTO) ---
         rx.vstack(
             rx.heading("Docente - Instrucciones de Uso", size="8", font_family="serif", margin_top="1em"), 
             rx.hstack(
@@ -553,19 +561,18 @@ def content_inicio():
                     height="350px"
                 ), 
                 
-                # VIDEO YOUTUBE (URL de 10 min o menos)
+                # VIDEO YOUTUBE (URL 10 MIN)
                 rx.vstack(
                     rx.text("Video Tutorial:", font_weight="bold", font_size="0.8em"),
                     rx.video(
-                        # He cambiado la URL por un video de "10 minutes timer" que es seguro y corto.
-                        # Puedes reemplazarla por el ID de tu video cuando lo tengas.
-                        src="https://www.youtube.com/embed/8d-bT6qGqGk", 
+                        # URL de video 10 min
+                        src="https://youtu.be/KlF33--1i8I?si=krteNx5U3c1Su1AI", 
                         width="100%", 
                         height="auto",
                         controls=True,
-                        playing=True,
-                        loop=True,
-                        muted=True
+                        playing=False, # Autoplay off para no molestar
+                        loop=False,
+                        muted=False
                     ),
                     rx.text("(Video demostrativo)", font_size="0.7em", color="gray"),
                     width="40%"
@@ -641,9 +648,9 @@ def content_upload():
                 rx.heading("Orden Requerido:", size="4"),
                 rx.text("Cargue los archivos respetando este orden:", font_size="0.9em", margin_bottom="1em", color="gray"),
                 rx.list.ordered(
-                    rx.list.item(rx.text("1. Titulados", font_weight="bold", color="blue")),
-                    rx.list.item(rx.text("2. Cuestionario (Motivación)", font_weight="bold", color="green")),
-                    rx.list.item(rx.text("3. Preparación", font_weight="bold", color="purple")),
+                    rx.list.item(rx.text(" Titulados", font_weight="bold", color="blue")),
+                    rx.list.item(rx.text(" Cuestionario (Motivación)", font_weight="bold", color="green")),
+                    rx.list.item(rx.text(" Preparación", font_weight="bold", color="purple")),
                     spacing="3"
                 ),
                 rx.divider(margin_y="1.5em"),
