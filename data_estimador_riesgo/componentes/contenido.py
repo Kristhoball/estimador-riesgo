@@ -472,7 +472,7 @@ def content_inicio():
         # --- HEADER CON LOGO ---
         rx.hstack(
             rx.image(
-                src="/logo.jpeg", # IMPORTANTE: Ruta absoluta para el archivo en assets/logo.jpeg
+                src="/logo.jpeg",
                 width="100px",
                 height="auto",
                 border_radius="10px",
@@ -491,46 +491,49 @@ def content_inicio():
             rx.text(
                 "Herramienta de analítica predictiva diseñada para detectar estudiantes en riesgo de deserción o retraso académico. "
                 "Compara el desempeño histórico (data de titulados) con indicadores actuales de motivación, reprobación y preparación inicial (PAES).",
-                margin_bottom="0.5em"
+                margin_bottom="0.5em",
+                color="gray.700"
             ),
             rx.text(
                 "(Resumen): El sistema calcula un Índice de Riesgo Total (Ri) fusionando datos cuantitativos (tiempo de titulación) y cualitativos (motivación). "
                 "Permite al cuerpo docente visualizar alertas tempranas por carrera y por estudiante.",
-                color="red",
+                color="teal.600",
                 font_weight="bold"
             ),
-            style=style_border_box,
+            style=style_card_modern,
             margin_y="2em"
         ),
 
         # --- ÍNDICE ---
         rx.vstack(
-            rx.heading("Index :", size="5"),
+            rx.heading("Index :", size="5", color="gray.800"),
             rx.scroll_area(
                 rx.vstack(
-                    rx.link("• Explicación", href="#explicacion", color="blue", text_decoration="underline"),
-                    rx.link("• Docente", href="#docente", color="blue", text_decoration="underline"),
-                    rx.link("• Contacto", href="#contacto", color="blue", text_decoration="underline"),
-                    spacing="3"
+                    rx.link("• Explicación", href="#explicacion", color="teal.500"),
+                    rx.link("• Docente", href="#docente", color="teal.500"),
+                    rx.link("• Contacto", href="#contacto", color="teal.500"),
+                    spacing="3",
+                    padding="1em"
                 ),
-                type="always", scrollbars="vertical", style={"height": "150px", "border": "1px solid black", "padding": "1em", "width": "100%"}
+                type="always", scrollbars="vertical", style={"height": "150px", "width": "100%", "bg": "gray.50", "border_radius": "md"}
             ),
             width="100%", max_width="400px", align_items="start", margin_bottom="4em"
         ),
 
-        rx.divider(border_color="black"),
+        rx.divider(border_color="gray.200"),
 
         # --- EXPLICACIÓN ---
         rx.vstack(
-            rx.heading("Explicación del Modelo", size="8", font_family="serif", margin_top="1em"),
+            rx.heading("Explicación del Modelo", size="8", font_family="serif", margin_top="1em", color="gray.800"),
             rx.box(
                 rx.text(
                     "El modelo matemático se basa en la fórmula: Ri = α(APi – Bi) + β(P̄i + IPAi). "
                     "Donde (Bi) es la Brecha Histórica calculada con datos ingresados. "
                     "Si un estudiante supera esta brecha y tiene baja motivación y baja preparación inicial, se activa la Alerta Roja.",
-                    margin_bottom="1em"
+                    margin_bottom="1em",
+                    color="gray.700"
                 ),
-                style=style_border_box,
+                style=style_card_modern,
                 min_height="150px"
             ),
             id="explicacion",
@@ -539,79 +542,83 @@ def content_inicio():
             margin_bottom="4em"
         ),
 
-        rx.divider(border_color="black"),
+        rx.divider(border_color="gray.200"),
 
-        # --- DOCENTE (CON INSTRUCCIONES Y VIDEO DE 10 MIN) ---
+        # --- DOCENTE (CON INSTRUCCIONES Y VIDEO CUADRADO) ---
         rx.vstack(
-            rx.heading("Docente - Instrucciones de Uso", size="8", font_family="serif", margin_top="1em"),
+            rx.heading("Docente - Instrucciones de Uso", size="8", font_family="serif", margin_top="1em", color="gray.800"),
             rx.hstack(
-                # LISTA DE PASOS
+                # LISTA DE PASOS (Limpia y Separada)
                 rx.box(
                     rx.list.unordered(
-                        rx.list.item(rx.text("Paso 1: ", font_weight="bold"), "Inicie sesión con sus credenciales."),
-                        rx.list.item(rx.text("Paso 2: ", font_weight="bold"), "Lea la información en la pestaña 'Inicio'."),
-                        rx.list.item(rx.text("Paso 3: ", font_weight="bold"), "Vaya a la pestaña 'Upload'."),
-                        rx.list.item(rx.text("Paso 4: ", font_weight="bold"), "Cargue los archivos CSV en el orden: 1.Titulados, 2.Motivación, 3.Preparación."),
-                        rx.list.item(rx.text("Paso 5: ", font_weight="bold"), "Vaya a la pestaña 'Resultados'."),
-                        rx.list.item(rx.text("Paso 6: ", font_weight="bold"), "Seleccione el tipo de simulación y genere las alertas."),
-                        spacing="2"
+                        rx.list.item(rx.text("Paso 1: ", font_weight="bold", color="teal.600"), "Inicie sesión con sus credenciales.", color="gray.700"),
+                        rx.list.item(rx.text("Paso 2: ", font_weight="bold", color="teal.600"), "Lea la información en la pestaña 'Inicio'.", color="gray.700"),
+                        rx.list.item(rx.text("Paso 3: ", font_weight="bold", color="teal.600"), "Vaya a la pestaña 'Upload'.", color="gray.700"),
+                        rx.list.item(rx.text("Paso 4: ", font_weight="bold", color="teal.600"), "Cargue los archivos CSV en el orden: 1.Titulados, 2.Motivación, 3.Preparación.", color="gray.700"),
+                        rx.list.item(rx.text("Paso 5: ", font_weight="bold", color="teal.600"), "Vaya a la pestaña 'Resultados'.", color="gray.700"),
+                        rx.list.item(rx.text("Paso 6: ", font_weight="bold", color="teal.600"), "Seleccione el tipo de simulación y genere las alertas.", color="gray.700"),
+                        spacing="5" # Mayor separación entre pasos
                     ),
-                    style=style_border_box,
-                    width="60%",
-                    height="350px"
+                    style=style_card_modern,
+                    width="55%",
+                    height="auto" # Altura automática para que se ajuste al contenido
                 ),
 
-                # VIDEO YOUTUBE (URL de 10 min o menos)
+                # VIDEO YOUTUBE (Más Cuadrado y Separado)
                 rx.vstack(
-                    rx.text("Video Tutorial:", font_weight="bold", font_size="0.8em"),
-                    rx.video(
-                        # URL de video 10 min
-                        src="https://www.youtube.com/embed/KlF33--1i8I",
-                        width="100%",
-                        height="auto",
-                        controls=True,
-                        playing=False, 
-                        loop=False,
-                        muted=False
+                    rx.text("Video Tutorial:", font_weight="bold", font_size="0.9em", color="teal.600", margin_bottom="0.5em"),
+                    # Usamos aspect_ratio para forzar una forma más cuadrada (ej. 4/3 o 1/1)
+                    rx.aspect_ratio(
+                        rx.video(
+                            src="https://www.youtube.com/embed/KlF33--1i8I",
+                            width="100%",
+                            height="100%", # El video ocupa todo el contenedor aspect_ratio
+                            controls=True,
+                        ),
+                        ratio=4/3, # Proporción más cuadrada (puedes probar 1/1 para totalmente cuadrado)
+                        width="100%"
                     ),
-                    rx.text("(Video demostrativo)", font_size="0.7em", color="gray"),
-                    width="40%"
+                    rx.text("(Video demostrativo)", font_size="0.75em", color="gray.500", margin_top="0.5em"),
+                    width="40%",
+                    align_items="start"
                 ),
                 width="100%",
                 align_items="start",
-                spacing="4"
+                spacing="6" # Mayor separación entre la lista y el video
             ),
             id="docente",
             width="100%",
             margin_bottom="4em"
         ),
 
-        rx.divider(border_color="black"),
+        rx.divider(border_color="gray.200"),
 
         # --- CONTACTO ---
         rx.vstack(
-            rx.heading("Contacto y Soporte", size="8", font_family="serif", margin_top="1em"),
+            rx.heading("Contacto y Soporte", size="8", font_family="serif", margin_top="1em", color="gray.800"),
             rx.box(
                 rx.vstack(
-                    rx.text("Para dudas técnicas o reporte de errores, contactar al equipo de desarrollo de Ingeniería Civil Industrial."),
-                    rx.text("Repositorio del Proyecto:", font_weight="bold"),
+                    rx.text("Para dudas técnicas o reporte de errores, contactar al equipo de desarrollo de Ingeniería Civil Industrial.", color="gray.700"),
+                    rx.text("Repositorio del Proyecto:", font_weight="bold", color="gray.800", margin_top="0.5em"),
                     rx.link(
                         "Kristhoball/estimador-riesgo: Modelo de estimador de riesgo estudiantil",
                         href="https://github.com/Kristhoball/estimador-riesgo",
-                        color="blue",
+                        color="teal.500",
+                        font_weight="medium",
                         is_external=True
                     ),
                     spacing="2"
                 ),
-                style=style_border_box,
-                height="200px"
+                style=style_card_modern,
+                height="auto",
+                padding_y="3em"
             ),
             id="contacto",
             width="100%",
             margin_bottom="4em"
         ),
 
-        align_items="start", width="100%", padding="3em"
+        align_items="start", width="100%", padding="3em", bg="gray.50" # Fondo general más suave
     )
 
 def content_upload():
