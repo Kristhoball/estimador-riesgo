@@ -620,6 +620,7 @@ def content_upload():
                     rx.text("¿Es una simulación?", font_weight="bold", color="gray.700"),
                     rx.hstack(
                         rx.radio_group(["Si", "No"], direction="row", on_change=State.set_es_simulado, value=State.es_simulado, color_scheme="teal"),
+                        # CORRECCIÓN DE VARIANT: Usamos 'soft' o 'solid' en lugar de 'subtle'
                         rx.badge(f"Seleccionado: {State.es_simulado}", color_scheme="blue", variant="soft"),
                         align_items="center", spacing="4"
                     ),
@@ -813,8 +814,9 @@ def content_historial():
                     rx.hstack(
                         rx.vstack(
                             rx.hstack(
+                                # CORRECCIÓN DE VARIANT: Usamos 'solid' o 'soft' en lugar de 'subtle'
                                 rx.badge(f"{registro['hora']}", color_scheme="gray", variant="solid"),
-                                rx.badge(registro["tipo"], color_scheme="blue", variant="subtle"),
+                                rx.badge(registro["tipo"], color_scheme="blue", variant="soft"),
                                 spacing="2"
                             ),
                             rx.text(registro["detalle"], font_size="sm", color="gray.600", margin_top="0.5em"),
@@ -870,7 +872,8 @@ def contenido() -> rx.Component:
         rx.cond(
             State.esta_logueado,
             rx.hstack(
-                rx.badge(f"👤 {State.usuario_actual}", color_scheme="green", variant="subtle", padding="0.5em"),
+                # CORRECCIÓN DE VARIANT
+                rx.badge(f"👤 {State.usuario_actual}", color_scheme="green", variant="soft", padding="0.5em"),
                 rx.button("Mi Perfil", on_click=lambda: State.set_show_perfil(True), variant="ghost", size="2", color_scheme="gray"),
                 perfil_modal(), 
                 rx.button("Salir", on_click=State.cerrar_sesion, color_scheme="red", variant="ghost", size="2"),
