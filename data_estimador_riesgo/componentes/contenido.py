@@ -9,11 +9,11 @@ import zipfile
 import gc
 import shutil
 from datetime import datetime
-import time 
+import time
 
 # --- CORRECCIÓN DE IMPORTS ROBUSTA ---
 try:
-    from data_estimador_riesgo.codigo import Filtrar_Archivo_En_Disco 
+    from data_estimador_riesgo.codigo import Filtrar_Archivo_En_Disco
     from data_estimador_riesgo.componentes.codigo2 import Calcular_Resultados_Finales
 except ImportError:
     # Fallback por si la estructura local es diferente
@@ -27,8 +27,8 @@ except ImportError:
 # =========================================================================
 # CACHE GLOBAL
 # =========================================================================
-USUARIOS_CACHE = {} 
-TIEMPO_EXPIRACION_MINUTOS = 30 
+USUARIOS_CACHE = {}
+TIEMPO_EXPIRACION_MINUTOS = 30
 
 # Carpeta segura para uploads
 CARPETA_SISTEMA_TEMP = tempfile.gettempdir()
@@ -44,27 +44,27 @@ class State(rx.State):
     usuario_cookie: str = rx.Cookie("")
 
     # --- VARIABLES ---
-    archivos_visuales: list[str] = [] 
-    df_rutas: list[str] = [] 
+    archivos_visuales: list[str] = []
+    df_rutas: list[str] = []
     seleccionado: str = ""
     logs: list[str] = ["Sistema listo. Carga: 1.Titulados, 2.Motivación, 3.Preparación."]
-    
+
     es_simulado: str = "No"
-    
+
     # Variable para el input de combinatoria
     max_filas_combinatoria: str = "2000"
 
     procesando: bool = False
-    progreso: int = 0 
+    progreso: int = 0
     historial: list[dict] = []
     tipo_simulacion: str = "Muestra estratificada por criterio de Neyman"
-    vista_actual: str = "inicio" 
+    vista_actual: str = "inicio"
 
     img_carrera: str = ""
     img_estudiantes: str = ""
     procesando_graficos: bool = False
     show_login: bool = False
-    show_perfil: bool = False 
+    show_perfil: bool = False
     correo_input: str = ""
     pass_input: str = ""
     error_login: str = ""
@@ -92,8 +92,8 @@ class State(rx.State):
     def set_correo_input(self, v): self.correo_input = v
     def set_pass_input(self, v): self.pass_input = v
     def set_tipo_simulacion(self, v): self.tipo_simulacion = v
-    
-    def set_es_simulado(self, v): 
+
+    def set_es_simulado(self, v):
         self.es_simulado = v
         print(f"DEBUG: Modo simulado cambiado a {self.es_simulado}")
 
@@ -179,7 +179,7 @@ class State(rx.State):
             self.img_carrera = ""
             self.img_estudiantes = ""
             self.seleccionado = ""
-            
+
         self.usuario_actual = email; self.usuario_cookie = email
         self.esta_logueado = True; self.show_login = False; self.error_login = ""
         return rx.toast.success(f"Bienvenido, {email}")
@@ -263,7 +263,7 @@ class State(rx.State):
         self.procesando = True
         self.progreso = 5
         self.logs.append(f"--- Iniciando carga (Simulado: {self.es_simulado}) ---")
-        yield 
+        yield
 
         num_files = len(files)
         inc = 90 // max(1, num_files)
@@ -272,10 +272,10 @@ class State(rx.State):
         for i, file in enumerate(files):
             nombre = file.filename
             if nombre not in self.archivos_visuales: self.archivos_visuales.append(nombre)
-            
+
             tmp_in = os.path.join(CARPETA_DATOS, f"temp_in_{int(time.time())}_{i}.csv")
             tmp_out = os.path.join(CARPETA_DATOS, f"temp_out_{int(time.time())}_{i}.csv")
-            
+
             try:
                 self.logs.append(f"Recibiendo: {nombre}...")
                 yield
@@ -289,13 +289,13 @@ class State(rx.State):
 
                 self.logs.append(f"Filtrando: {nombre}...")
                 yield
-                
+
                 filas = Filtrar_Archivo_En_Disco(tmp_in, tmp_out, es_simulado=self.es_simulado)
-                
+
                 if filas > 0:
                     final_path = os.path.join(CARPETA_DATOS, f"{self.usuario_actual}_{int(time.time())}_{i}.csv")
                     shutil.move(tmp_out, final_path)
-                    
+
                     if len(self.df_rutas) < len(self.archivos_visuales):
                         self.df_rutas.append(final_path)
                     else:
@@ -304,14 +304,14 @@ class State(rx.State):
                     self.logs.append(f"-> OK ({filas} filas).")
                 else:
                     self.logs.append(f"Advertencia: '{nombre}' vacío o sin carreras válidas.")
-                    
+
             except Exception as e:
                 self.logs.append(f"Error: {str(e)}")
                 if nombre in self.archivos_visuales: self.eliminar_archivo(nombre)
                 yield rx.toast.error(f"Error: {str(e)}", duration=5000)
-            
+
             finally:
-                if os.path.exists(tmp_in): 
+                if os.path.exists(tmp_in):
                     try: os.remove(tmp_in)
                     except: pass
                 if os.path.exists(tmp_out):
@@ -321,7 +321,7 @@ class State(rx.State):
 
             curr += inc
             self.progreso = min(curr, 99)
-            yield 
+            yield
 
         self.guardar_estado_usuario()
         self.progreso = 100
@@ -334,28 +334,28 @@ class State(rx.State):
         if len(self.df_rutas) < 3:
             yield rx.window_alert(f"Faltan archivos (tienes {len(self.df_rutas)} de 3).")
             return
-        
+
         self.procesando_graficos = True
         yield
         import asyncio
         await asyncio.sleep(0.1)
-        
+
         try:
             df_tit = pd.read_csv(self.df_rutas[0])
             df_mot = pd.read_csv(self.df_rutas[1])
             df_prep = pd.read_csv(self.df_rutas[2])
-            
+
             if 'Carrera que estudias actualmente' in df_mot.columns:
                 df_mot.rename(columns={'Carrera que estudias actualmente': 'nomb_carrera'}, inplace=True)
             if 'Código Carrera Nacional' in df_prep.columns:
                 df_prep.rename(columns={'Código Carrera Nacional': 'nomb_carrera'}, inplace=True)
 
             fig1, fig2 = Calcular_Resultados_Finales(
-                df_tit, df_mot, df_prep, 
+                df_tit, df_mot, df_prep,
                 tipo_simulacion=self.tipo_simulacion,
                 max_filas_simuladas=self.max_filas_combinatoria
             )
-            
+
             buf = io.BytesIO(); fig1.savefig(buf, format='png', bbox_inches='tight'); buf.seek(0)
             b64_carrera_raw = base64.b64encode(buf.read()).decode('utf-8')
             self.img_carrera = f"data:image/png;base64,{b64_carrera_raw}"
@@ -367,13 +367,13 @@ class State(rx.State):
                 self.img_estudiantes = f"data:image/png;base64,{b64_estudiantes_raw}"
                 plt.close(fig2)
             else: self.img_estudiantes = ""
-            
+
             hora = datetime.now().strftime("%H:%M:%S")
             self.historial.insert(0, {
-                "hora": hora, "tipo": self.tipo_simulacion, 
-                "detalle": f"Simulación completada con: {self.seleccionado}", 
+                "hora": hora, "tipo": self.tipo_simulacion,
+                "detalle": f"Simulación completada con: {self.seleccionado}",
                 "archivo_origen": self.seleccionado,
-                "img_carrera_b64": self.img_carrera, 
+                "img_carrera_b64": self.img_carrera,
                 "img_estudiantes_b64": self.img_estudiantes
             })
             self.guardar_estado_usuario()
@@ -382,7 +382,7 @@ class State(rx.State):
             self.procesando_graficos = False
             yield rx.window_alert(f"Error cálculo: {str(e)}")
             return
-        
+
         self.procesando_graficos = False
 
 # ==========================================
@@ -469,23 +469,23 @@ def perfil_modal():
 
 def content_inicio():
     return rx.vstack(
-        # --- HEADER CON LOGO (Alineación Mejorada) ---
+        # --- HEADER CON LOGO ---
         rx.hstack(
             rx.image(
-                src="/logo.jpeg", # IMPORTANTE: Coincide con tu archivo en assets/
-                width="80px", 
-                height="auto", 
-                border_radius="8px",
+                src="/logo.jpeg", # IMPORTANTE: Ruta absoluta para el archivo en assets/logo.jpeg
+                width="100px",
+                height="auto",
+                border_radius="10px",
                 object_fit="contain"
             ),
             rx.heading("Modelo de Estimador de riesgo", size="8", font_family="serif"),
             align_items="center",
             spacing="5",
-            margin_bottom="1.5em",
+            margin_bottom="1em",
             width="100%",
-            justify_content="start" # Alineado a la izquierda junto al texto
+            justify_content="start"
         ),
-        
+
         # --- DESCRIPCIÓN GENERAL ---
         rx.box(
             rx.text(
@@ -494,56 +494,56 @@ def content_inicio():
                 margin_bottom="0.5em"
             ),
             rx.text(
-                "El sistema calcula un Índice de Riesgo Total (Ri) fusionando datos cuantitativos (tiempo de titulación) y cualitativos (motivación). "
-                "Permite al docente visualizar alertas tempranas por carrera y por estudiante.", 
-                color="red", 
+                "(Resumen): El sistema calcula un Índice de Riesgo Total (Ri) fusionando datos cuantitativos (tiempo de titulación) y cualitativos (motivación). "
+                "Permite al cuerpo docente visualizar alertas tempranas por carrera y por estudiante.",
+                color="red",
                 font_weight="bold"
-            ), 
-            style=style_border_box, 
+            ),
+            style=style_border_box,
             margin_y="2em"
         ),
 
         # --- ÍNDICE ---
         rx.vstack(
-            rx.heading("Index :", size="5"), 
+            rx.heading("Index :", size="5"),
             rx.scroll_area(
                 rx.vstack(
-                    rx.link("• Explicación", href="#explicacion", color="blue", text_decoration="underline"), 
-                    rx.link("• Docente", href="#docente", color="blue", text_decoration="underline"), 
-                    rx.link("• Contacto", href="#contacto", color="blue", text_decoration="underline"), 
+                    rx.link("• Explicación", href="#explicacion", color="blue", text_decoration="underline"),
+                    rx.link("• Docente", href="#docente", color="blue", text_decoration="underline"),
+                    rx.link("• Contacto", href="#contacto", color="blue", text_decoration="underline"),
                     spacing="3"
-                ), 
+                ),
                 type="always", scrollbars="vertical", style={"height": "150px", "border": "1px solid black", "padding": "1em", "width": "100%"}
-            ), 
+            ),
             width="100%", max_width="400px", align_items="start", margin_bottom="4em"
         ),
-        
+
         rx.divider(border_color="black"),
-        
+
         # --- EXPLICACIÓN ---
         rx.vstack(
-            rx.heading("Explicación del Modelo", size="8", font_family="serif", margin_top="1em"), 
+            rx.heading("Explicación del Modelo", size="8", font_family="serif", margin_top="1em"),
             rx.box(
                 rx.text(
                     "El modelo matemático se basa en la fórmula: Ri = α(APi – Bi) + β(P̄i + IPAi). "
                     "Donde (Bi) es la Brecha Histórica calculada con datos ingresados. "
                     "Si un estudiante supera esta brecha y tiene baja motivación y baja preparación inicial, se activa la Alerta Roja.",
                     margin_bottom="1em"
-                ), 
-                style=style_border_box, 
-                min_height="150px" 
-            ), 
-            id="explicacion", 
-            width="100%", 
-            align_items="center", 
+                ),
+                style=style_border_box,
+                min_height="150px"
+            ),
+            id="explicacion",
+            width="100%",
+            align_items="center",
             margin_bottom="4em"
         ),
-        
+
         rx.divider(border_color="black"),
-        
-        # --- DOCENTE (CON INSTRUCCIONES Y VIDEO CORTO) ---
+
+        # --- DOCENTE (CON INSTRUCCIONES Y VIDEO DE 10 MIN) ---
         rx.vstack(
-            rx.heading("Docente - Instrucciones de Uso", size="8", font_family="serif", margin_top="1em"), 
+            rx.heading("Docente - Instrucciones de Uso", size="8", font_family="serif", margin_top="1em"),
             rx.hstack(
                 # LISTA DE PASOS
                 rx.box(
@@ -555,62 +555,62 @@ def content_inicio():
                         rx.list.item(rx.text("Paso 5: ", font_weight="bold"), "Vaya a la pestaña 'Resultados'."),
                         rx.list.item(rx.text("Paso 6: ", font_weight="bold"), "Seleccione el tipo de simulación y genere las alertas."),
                         spacing="2"
-                    ), 
-                    style=style_border_box, 
-                    width="60%", 
+                    ),
+                    style=style_border_box,
+                    width="60%",
                     height="350px"
-                ), 
-                
-                # VIDEO YOUTUBE (URL 10 MIN)
+                ),
+
+                # VIDEO YOUTUBE (URL de 10 min o menos)
                 rx.vstack(
                     rx.text("Video Tutorial:", font_weight="bold", font_size="0.8em"),
                     rx.video(
                         # URL de video 10 min
-                        src="https://www.youtube.com/embed/KlF33--1i8I", 
-                        width="100%", 
+                        src="https://www.youtube.com/embed/KlF33--1i8I",
+                        width="100%",
                         height="auto",
                         controls=True,
-                        playing=False, # Autoplay off para no molestar
+                        playing=False, 
                         loop=False,
                         muted=False
                     ),
                     rx.text("(Video demostrativo)", font_size="0.7em", color="gray"),
                     width="40%"
-                ), 
+                ),
                 width="100%",
                 align_items="start",
                 spacing="4"
-            ), 
-            id="docente", 
-            width="100%", 
+            ),
+            id="docente",
+            width="100%",
             margin_bottom="4em"
         ),
-        
+
         rx.divider(border_color="black"),
-        
+
         # --- CONTACTO ---
         rx.vstack(
-            rx.heading("Contacto y Soporte", size="8", font_family="serif", margin_top="1em"), 
+            rx.heading("Contacto y Soporte", size="8", font_family="serif", margin_top="1em"),
             rx.box(
                 rx.vstack(
-                    rx.text("Para dudas técnicas o reporte de errores, contactar al equipo de desarrollo."),
+                    rx.text("Para dudas técnicas o reporte de errores, contactar al equipo de desarrollo de Ingeniería Civil Industrial."),
                     rx.text("Repositorio del Proyecto:", font_weight="bold"),
                     rx.link(
-                        "Kristhoball/estimador-riesgo: Modelo de estimador de riesgo estudiantil", 
+                        "Kristhoball/estimador-riesgo: Modelo de estimador de riesgo estudiantil",
                         href="https://github.com/Kristhoball/estimador-riesgo",
                         color="blue",
                         is_external=True
                     ),
                     spacing="2"
                 ),
-                style=style_border_box, 
+                style=style_border_box,
                 height="200px"
-            ), 
-            id="contacto", 
-            width="100%", 
+            ),
+            id="contacto",
+            width="100%",
             margin_bottom="4em"
         ),
-        
+
         align_items="start", width="100%", padding="3em"
     )
 
@@ -648,9 +648,9 @@ def content_upload():
                 rx.heading("Orden Requerido:", size="4"),
                 rx.text("Cargue los archivos respetando este orden:", font_size="0.9em", margin_bottom="1em", color="gray"),
                 rx.list.ordered(
-                    rx.list.item(rx.text(" Titulados", font_weight="bold", color="blue")),
-                    rx.list.item(rx.text(" Cuestionario (Motivación)", font_weight="bold", color="green")),
-                    rx.list.item(rx.text(" Preparación", font_weight="bold", color="purple")),
+                    rx.list.item(rx.text("1. Titulados", font_weight="bold", color="blue")),
+                    rx.list.item(rx.text("2. Cuestionario (Motivación)", font_weight="bold", color="green")),
+                    rx.list.item(rx.text("3. Preparación", font_weight="bold", color="purple")),
                     spacing="3"
                 ),
                 rx.divider(margin_y="1.5em"),
