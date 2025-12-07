@@ -545,7 +545,7 @@ def content_inicio():
                 rx.vstack(
                     rx.text("Video Tutorial:", font_weight="bold", font_size="0.8em"),
                     rx.video(
-                        url="https://youtu.be/GCGesFZFjX0?si=odMG-OOpYPWHK8iO", 
+                        src="https://youtu.be/GCGesFZFjX0?si=odMG-OOpYPWHK8iO", 
                         width="100%", 
                         height="auto",
                         controls=True,
