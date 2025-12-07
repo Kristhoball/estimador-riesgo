@@ -10,10 +10,20 @@ import gc
 import shutil
 from datetime import datetime
 import time 
-
-# Importamos la lógica de cálculo y filtrado
-from .codigo import Filtrar_Archivo_En_Disco 
-from .codigo2 import Calcular_Resultados_Finales
+# --- CORRECCIÓN DE IMPORTS (USANDO RUTA ABSOLUTA) ---
+# Esto evita el error "No module named..." y el error de puntos relativos (..)
+try:
+    from data_estimador_riesgo.codigo import Filtrar_Archivo_En_Disco 
+    from data_estimador_riesgo.componentes.codigo2 import Calcular_Resultados_Finales
+except ImportError:
+    # Fallback por si la estructura local es diferente
+    try:
+        from ..codigo import Filtrar_Archivo_En_Disco
+        from .codigo2 import Calcular_Resultados_Finales
+    except:
+        # Último intento: asumiendo todo en la misma carpeta (para pruebas)
+        from .codigo import Filtrar_Archivo_En_Disco
+        from .codigo2 import Calcular_Resultados_Finales
 
 # =========================================================================
 # CACHE GLOBAL
