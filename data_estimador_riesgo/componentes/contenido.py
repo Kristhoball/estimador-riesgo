@@ -9,11 +9,11 @@ import zipfile
 import gc
 import shutil
 from datetime import datetime
-import time
+import time 
 
 # --- CORRECCIÓN DE IMPORTS ROBUSTA ---
 try:
-    from data_estimador_riesgo.codigo import Filtrar_Archivo_En_Disco
+    from data_estimador_riesgo.codigo import Filtrar_Archivo_En_Disco 
     from data_estimador_riesgo.componentes.codigo2 import Calcular_Resultados_Finales
 except ImportError:
     # Fallback por si la estructura local es diferente
@@ -27,8 +27,8 @@ except ImportError:
 # =========================================================================
 # CACHE GLOBAL
 # =========================================================================
-USUARIOS_CACHE = {}
-TIEMPO_EXPIRACION_MINUTOS = 30
+USUARIOS_CACHE = {} 
+TIEMPO_EXPIRACION_MINUTOS = 30 
 
 # Carpeta segura para uploads
 CARPETA_SISTEMA_TEMP = tempfile.gettempdir()
@@ -44,27 +44,27 @@ class State(rx.State):
     usuario_cookie: str = rx.Cookie("")
 
     # --- VARIABLES ---
-    archivos_visuales: list[str] = []
-    df_rutas: list[str] = []
+    archivos_visuales: list[str] = [] 
+    df_rutas: list[str] = [] 
     seleccionado: str = ""
     logs: list[str] = ["Sistema listo. Carga: 1.Titulados, 2.Motivación, 3.Preparación."]
-
+    
     es_simulado: str = "No"
-
+    
     # Variable para el input de combinatoria
     max_filas_combinatoria: str = "2000"
 
     procesando: bool = False
-    progreso: int = 0
+    progreso: int = 0 
     historial: list[dict] = []
     tipo_simulacion: str = "Muestra estratificada por criterio de Neyman"
-    vista_actual: str = "inicio"
+    vista_actual: str = "inicio" 
 
     img_carrera: str = ""
     img_estudiantes: str = ""
     procesando_graficos: bool = False
     show_login: bool = False
-    show_perfil: bool = False
+    show_perfil: bool = False 
     correo_input: str = ""
     pass_input: str = ""
     error_login: str = ""
@@ -92,8 +92,8 @@ class State(rx.State):
     def set_correo_input(self, v): self.correo_input = v
     def set_pass_input(self, v): self.pass_input = v
     def set_tipo_simulacion(self, v): self.tipo_simulacion = v
-
-    def set_es_simulado(self, v):
+    
+    def set_es_simulado(self, v): 
         self.es_simulado = v
         print(f"DEBUG: Modo simulado cambiado a {self.es_simulado}")
 
@@ -179,7 +179,7 @@ class State(rx.State):
             self.img_carrera = ""
             self.img_estudiantes = ""
             self.seleccionado = ""
-
+            
         self.usuario_actual = email; self.usuario_cookie = email
         self.esta_logueado = True; self.show_login = False; self.error_login = ""
         return rx.toast.success(f"Bienvenido, {email}")
@@ -263,7 +263,7 @@ class State(rx.State):
         self.procesando = True
         self.progreso = 5
         self.logs.append(f"--- Iniciando carga (Simulado: {self.es_simulado}) ---")
-        yield
+        yield 
 
         num_files = len(files)
         inc = 90 // max(1, num_files)
@@ -272,10 +272,10 @@ class State(rx.State):
         for i, file in enumerate(files):
             nombre = file.filename
             if nombre not in self.archivos_visuales: self.archivos_visuales.append(nombre)
-
+            
             tmp_in = os.path.join(CARPETA_DATOS, f"temp_in_{int(time.time())}_{i}.csv")
             tmp_out = os.path.join(CARPETA_DATOS, f"temp_out_{int(time.time())}_{i}.csv")
-
+            
             try:
                 self.logs.append(f"Recibiendo: {nombre}...")
                 yield
@@ -289,13 +289,13 @@ class State(rx.State):
 
                 self.logs.append(f"Filtrando: {nombre}...")
                 yield
-
+                
                 filas = Filtrar_Archivo_En_Disco(tmp_in, tmp_out, es_simulado=self.es_simulado)
-
+                
                 if filas > 0:
                     final_path = os.path.join(CARPETA_DATOS, f"{self.usuario_actual}_{int(time.time())}_{i}.csv")
                     shutil.move(tmp_out, final_path)
-
+                    
                     if len(self.df_rutas) < len(self.archivos_visuales):
                         self.df_rutas.append(final_path)
                     else:
@@ -304,14 +304,14 @@ class State(rx.State):
                     self.logs.append(f"-> OK ({filas} filas).")
                 else:
                     self.logs.append(f"Advertencia: '{nombre}' vacío o sin carreras válidas.")
-
+                    
             except Exception as e:
                 self.logs.append(f"Error: {str(e)}")
                 if nombre in self.archivos_visuales: self.eliminar_archivo(nombre)
                 yield rx.toast.error(f"Error: {str(e)}", duration=5000)
-
+            
             finally:
-                if os.path.exists(tmp_in):
+                if os.path.exists(tmp_in): 
                     try: os.remove(tmp_in)
                     except: pass
                 if os.path.exists(tmp_out):
@@ -321,7 +321,7 @@ class State(rx.State):
 
             curr += inc
             self.progreso = min(curr, 99)
-            yield
+            yield 
 
         self.guardar_estado_usuario()
         self.progreso = 100
@@ -334,28 +334,28 @@ class State(rx.State):
         if len(self.df_rutas) < 3:
             yield rx.window_alert(f"Faltan archivos (tienes {len(self.df_rutas)} de 3).")
             return
-
+        
         self.procesando_graficos = True
         yield
         import asyncio
         await asyncio.sleep(0.1)
-
+        
         try:
             df_tit = pd.read_csv(self.df_rutas[0])
             df_mot = pd.read_csv(self.df_rutas[1])
             df_prep = pd.read_csv(self.df_rutas[2])
-
+            
             if 'Carrera que estudias actualmente' in df_mot.columns:
                 df_mot.rename(columns={'Carrera que estudias actualmente': 'nomb_carrera'}, inplace=True)
             if 'Código Carrera Nacional' in df_prep.columns:
                 df_prep.rename(columns={'Código Carrera Nacional': 'nomb_carrera'}, inplace=True)
 
             fig1, fig2 = Calcular_Resultados_Finales(
-                df_tit, df_mot, df_prep,
+                df_tit, df_mot, df_prep, 
                 tipo_simulacion=self.tipo_simulacion,
                 max_filas_simuladas=self.max_filas_combinatoria
             )
-
+            
             buf = io.BytesIO(); fig1.savefig(buf, format='png', bbox_inches='tight'); buf.seek(0)
             b64_carrera_raw = base64.b64encode(buf.read()).decode('utf-8')
             self.img_carrera = f"data:image/png;base64,{b64_carrera_raw}"
@@ -367,13 +367,13 @@ class State(rx.State):
                 self.img_estudiantes = f"data:image/png;base64,{b64_estudiantes_raw}"
                 plt.close(fig2)
             else: self.img_estudiantes = ""
-
+            
             hora = datetime.now().strftime("%H:%M:%S")
             self.historial.insert(0, {
-                "hora": hora, "tipo": self.tipo_simulacion,
-                "detalle": f"Simulación completada con: {self.seleccionado}",
+                "hora": hora, "tipo": self.tipo_simulacion, 
+                "detalle": f"Simulación completada con: {self.seleccionado}", 
                 "archivo_origen": self.seleccionado,
-                "img_carrera_b64": self.img_carrera,
+                "img_carrera_b64": self.img_carrera, 
                 "img_estudiantes_b64": self.img_estudiantes
             })
             self.guardar_estado_usuario()
@@ -382,7 +382,7 @@ class State(rx.State):
             self.procesando_graficos = False
             yield rx.window_alert(f"Error cálculo: {str(e)}")
             return
-
+        
         self.procesando_graficos = False
 
 # ==========================================
@@ -490,7 +490,7 @@ def perfil_modal():
 
 def content_inicio():
     return rx.vstack(
-        # --- HEADER ---
+        # --- HEADER CON LOGO (Alineación Mejorada) ---
         rx.hstack(
             rx.image(src="/logo.jpeg", width="80px", height="auto", border_radius="lg", object_fit="contain"),
             rx.heading("Modelo de Estimador de Riesgo", size="8", font_family="serif", color="gray.800"),
@@ -547,6 +547,7 @@ def content_inicio():
         rx.vstack(
             rx.heading("Docente - Instrucciones de Uso", size="7", font_family="serif", margin_top="1em", color="gray.800"),
             rx.hstack(
+                # LISTA DE PASOS
                 rx.box(
                     rx.list.unordered(
                         rx.list.item(rx.text("Paso 1: ", font_weight="bold", color="teal.600"), "Inicie sesión con sus credenciales.", color="gray.700"),
@@ -567,6 +568,8 @@ def content_inicio():
                     rx.text("Video Tutorial:", font_weight="bold", font_size="1em", color="teal.800"),
                     rx.aspect_ratio(
                         rx.video(
+                            # He cambiado la URL por el video corto (Timer) que es seguro y no bloquea
+                            # Puedes volver a poner tu video cuando quieras, pero recuerda usar src=
                             src="https://www.youtube.com/embed/8d-bT6qGqGk",
                             width="100%", height="100%", controls=True
                         ),
@@ -620,7 +623,7 @@ def content_upload():
                     rx.text("¿Es una simulación?", font_weight="bold", color="gray.700"),
                     rx.hstack(
                         rx.radio_group(["Si", "No"], direction="row", on_change=State.set_es_simulado, value=State.es_simulado, color_scheme="teal"),
-                        # CORRECCIÓN DE VARIANT: Usamos 'soft' o 'solid' en lugar de 'subtle'
+                        # --- FIX: Cambio variant='subtle' a 'soft' ---
                         rx.badge(f"Seleccionado: {State.es_simulado}", color_scheme="blue", variant="soft"),
                         align_items="center", spacing="4"
                     ),
@@ -680,17 +683,21 @@ def content_upload():
             rx.box(
                 rx.heading("Estado del Sistema", size="4", color="teal.700", margin_bottom="1em"),
                 
-                rx.alert(
-                    rx.alert_icon(),
-                    rx.box(
-                        rx.alert_title("Orden Requerido"),
-                        rx.alert_description(
-                            rx.text("1. Titulados.csv"),
-                            rx.text("2. Motivacion.csv"),
-                            rx.text("3. Preparacion.csv"),
-                        ),
+                # --- FIX: Cambio 'rx.alert' a 'rx.callout' (Lo que rompió el build antes) ---
+                rx.callout(
+                    rx.vstack(
+                        rx.text("Orden Requerido", font_weight="bold"),
+                        rx.text("1. Titulados.csv"),
+                        rx.text("2. Motivacion.csv"),
+                        rx.text("3. Preparacion.csv"),
+                        align_items="start",
+                        spacing="1"
                     ),
-                    status="info", variant="subtle", color_scheme="blue", margin_bottom="2em", border_radius="md"
+                    icon="info",
+                    color_scheme="blue",
+                    variant="soft",
+                    margin_bottom="2em",
+                    width="100%"
                 ),
                 
                 rx.text("Terminal de Procesos:", font_weight="bold", color="gray.700", margin_bottom="0.5em"),
@@ -814,7 +821,7 @@ def content_historial():
                     rx.hstack(
                         rx.vstack(
                             rx.hstack(
-                                # CORRECCIÓN DE VARIANT: Usamos 'solid' o 'soft' en lugar de 'subtle'
+                                # --- FIX: Variant 'soft' en lugar de 'subtle' ---
                                 rx.badge(f"{registro['hora']}", color_scheme="gray", variant="solid"),
                                 rx.badge(registro["tipo"], color_scheme="blue", variant="soft"),
                                 spacing="2"
@@ -872,7 +879,7 @@ def contenido() -> rx.Component:
         rx.cond(
             State.esta_logueado,
             rx.hstack(
-                # CORRECCIÓN DE VARIANT
+                # --- FIX: Variant 'soft' en lugar de 'subtle' ---
                 rx.badge(f"👤 {State.usuario_actual}", color_scheme="green", variant="soft", padding="0.5em"),
                 rx.button("Mi Perfil", on_click=lambda: State.set_show_perfil(True), variant="ghost", size="2", color_scheme="gray"),
                 perfil_modal(), 
