@@ -572,7 +572,7 @@ def content_inicio():
                     rx.text("Video Tutorial:", font_weight="bold", font_size="1em", color="teal.800"),
                     rx.aspect_ratio(
                         rx.video(
-                            src="https://www.youtube.com/embed/8d-bT6qGqGk",
+                            src="https://www.youtube.com/watch?v=AoQP6U3us5o",
                             width="100%", height="100%", controls=True
                         ),
                         ratio=4/3,
